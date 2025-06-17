@@ -1,25 +1,43 @@
 // 段位定義
 const DAN_RANKS = [
     { name: '無段', minScore: 0, color: '#888888' },
-    { name: '初段', minScore: 500, color: '#8B4513' },
-    { name: '二段', minScore: 1500, color: '#CD853F' },
-    { name: '三段', minScore: 3000, color: '#DAA520' },
-    { name: '四段', minScore: 6000, color: '#FFD700' },
-    { name: '五段', minScore: 12000, color: '#32CD32' },
-    { name: '六段', minScore: 20000, color: '#00CED1' },
-    { name: '七段', minScore: 35000, color: '#4169E1' },
-    { name: '八段', minScore: 50000, color: '#9932CC' },
-    { name: '九段', minScore: 75000, color: '#FF1493' },
-    { name: '十段', minScore: 100000, color: '#FF4500' },
-    { name: '名人', minScore: 150000, color: '#DC143C' },
-    { name: '竜王', minScore: 250000, color: '#B8860B' },
-    { name: '永世名人', minScore: 500000, color: '#FFD700' }
+    { name: '初段', minScore: 200, color: '#8B4513' },
+    { name: '二段', minScore: 800, color: '#CD853F' },
+    { name: '三段', minScore: 2000, color: '#DAA520' },
+    { name: '四段', minScore: 4000, color: '#FFD700' },
+    { name: '五段', minScore: 8000, color: '#32CD32' },
+    { name: '六段', minScore: 15000, color: '#00CED1' },
+    { name: '七段', minScore: 25000, color: '#4169E1' },
+    { name: '八段', minScore: 40000, color: '#9932CC' },
+    { name: '九段', minScore: 60000, color: '#FF1493' },
+    { name: '十段', minScore: 90000, color: '#FF4500' },
+    { name: '名人', minScore: 130000, color: '#DC143C' },
+    { name: '竜王', minScore: 200000, color: '#B8860B' },
+    { name: '永世名人', minScore: 300000, color: '#FFD700' }
 ];
+
+// 段位達成ボーナス設定
+const DAN_BONUS = {
+    '初段': { points: 20, effect: 'shodan_effect' },
+    '二段': { points: 30, effect: 'nidan_effect' },
+    '三段': { points: 50, effect: 'sandan_effect' },
+    '四段': { points: 40, effect: 'yondan_effect' },
+    '五段': { points: 50, effect: 'godan_effect' },
+    '六段': { points: 60, effect: 'rokudan_effect' },
+    '七段': { points: 70, effect: 'shichidan_effect' },
+    '八段': { points: 80, effect: 'hachidan_effect' },
+    '九段': { points: 90, effect: 'kyudan_effect' },
+    '十段': { points: 100, effect: 'judan_effect' },
+    '名人': { points: 150, effect: 'meijin_effect' },
+    '竜王': { points: 200, effect: 'ryuou_effect' },
+    '永世名人': { points: 300, effect: 'eisei_effect' }
+};
 
 class ScoreManager {
     constructor() {
         this.storageKey = 'claudeTetrisScores';
         this.maxRecords = 20;
+        this.lastDanRank = null;
     }
 
     // スコアを保存
@@ -92,6 +110,138 @@ class ScoreManager {
     // 現在の段位取得（リアルタイム）
     getCurrentDan(score) {
         return this.getDanRank(score);
+    }
+
+    // 段位昇格チェックとボーナス付与
+    checkDanPromotion(currentScore, pointSystem) {
+        const currentDan = this.getDanRank(currentScore);
+        
+        if (this.lastDanRank && currentDan.name !== this.lastDanRank.name) {
+            // 段位昇格が発生
+            const bonus = DAN_BONUS[currentDan.name];
+            if (bonus && pointSystem) {
+                pointSystem.addPoints(bonus.points);
+                this.showDanPromotionEffect(currentDan, bonus);
+            }
+            this.lastDanRank = currentDan;
+            return { promoted: true, newDan: currentDan, bonus: bonus };
+        }
+        
+        if (!this.lastDanRank) {
+            this.lastDanRank = currentDan;
+        }
+        
+        return { promoted: false, currentDan: currentDan };
+    }
+
+    // 段位昇格エフェクト表示
+    showDanPromotionEffect(dan, bonus) {
+        // ゲームプレイを妨げない左上角の通知
+        const promotionNotification = document.createElement('div');
+        promotionNotification.className = 'dan-promotion-notification';
+        promotionNotification.innerHTML = `
+            <div class="dan-promotion-content">
+                <div class="dan-promotion-icon">🏆</div>
+                <div class="dan-promotion-info">
+                    <div class="dan-promotion-title">段位昇格！</div>
+                    <div class="dan-promotion-name" style="color: ${dan.color}">${dan.name}</div>
+                    <div class="dan-promotion-bonus">+${bonus.points}P</div>
+                </div>
+            </div>
+        `;
+        
+        promotionNotification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 2px solid ${dan.color};
+            border-radius: 16px;
+            padding: 20px;
+            color: var(--text-primary);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transform: translateX(-400px);
+            opacity: 0;
+            animation: danPromotionSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+            max-width: 300px;
+        `;
+        
+        // スタイルを追加（未存在の場合）
+        if (!document.getElementById('danPromotionStyles')) {
+            const style = document.createElement('style');
+            style.id = 'danPromotionStyles';
+            style.textContent = `
+                @keyframes danPromotionSlideIn {
+                    0% {
+                        transform: translateX(-400px);
+                        opacity: 0;
+                    }
+                    50% {
+                        transform: translateX(10px);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+                @keyframes danPromotionSlideOut {
+                    0% {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    100% {
+                        transform: translateX(-400px);
+                        opacity: 0;
+                    }
+                }
+                .dan-promotion-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                }
+                .dan-promotion-icon {
+                    font-size: 2.5em;
+                    text-align: center;
+                    min-width: 50px;
+                }
+                .dan-promotion-info {
+                    flex: 1;
+                }
+                .dan-promotion-title {
+                    font-size: 1.1em;
+                    font-weight: 600;
+                    margin-bottom: 5px;
+                    color: var(--accent-green);
+                }
+                .dan-promotion-name {
+                    font-size: 1.4em;
+                    font-weight: 700;
+                    margin-bottom: 5px;
+                }
+                .dan-promotion-bonus {
+                    font-size: 1em;
+                    font-weight: 600;
+                    color: var(--accent-green);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(promotionNotification);
+        
+        // 4秒後に自動的に削除
+        setTimeout(() => {
+            promotionNotification.style.animation = 'danPromotionSlideOut 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+            setTimeout(() => {
+                if (promotionNotification.parentNode) {
+                    promotionNotification.parentNode.removeChild(promotionNotification);
+                }
+            }, 500);
+        }, 4000);
     }
 
     // 次の段位まで必要なスコア

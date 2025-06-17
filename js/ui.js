@@ -14,6 +14,7 @@ class UIManager {
             linesDisplay: document.getElementById('linesDisplay'),
             comboDisplay: document.getElementById('comboDisplay'),
             backToBackDisplay: document.getElementById('backToBackDisplay'),
+            comboCounter: document.getElementById('comboCounter'),
             totalLinesDisplay: document.getElementById('totalLinesDisplay'),
             tetrisCountDisplay: document.getElementById('tetrisCountDisplay'),
             tspinCountDisplay: document.getElementById('tspinCountDisplay'),
@@ -174,7 +175,7 @@ class UIManager {
         }
         
         if (this.elements.linesDisplay) {
-            this.elements.linesDisplay.textContent = `${progress.current}/10`;
+            this.elements.linesDisplay.textContent = `${progress.current}s/30s`;
         }
     }
     
@@ -314,6 +315,306 @@ class UIManager {
         this.updateOverallStats(scoreManager);
     }
 
+    updateAchievementScreen(achievementSystem) {
+        const achievements = achievementSystem.achievements;
+        const stats = achievementSystem.getProgressStats();
+        
+        // プログレス情報更新
+        document.getElementById('achievementProgress').textContent = `${stats.unlocked}/${stats.total}`;
+        document.getElementById('achievementPercentage').textContent = `${stats.progress}%`;
+        document.getElementById('achievementPoints').textContent = `${stats.totalPoints}P`;
+        
+        const progressFill = document.getElementById('achievementProgressFill');
+        progressFill.style.width = `${stats.progress}%`;
+        
+        // カテゴリータブのイベントリスナー設定
+        this.setupAchievementTabs(achievements);
+        
+        // 全実績表示
+        this.displayAchievements(achievements, 'all');
+    }
+
+    setupAchievementTabs(achievements) {
+        const tabs = document.querySelectorAll('.category-tab');
+        const achievementList = document.getElementById('achievementList');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // アクティブタブ切り替え
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                // 実績表示切り替え
+                const category = tab.dataset.category;
+                this.displayAchievements(achievements, category);
+            });
+        });
+    }
+
+    displayAchievements(achievements, category) {
+        const achievementList = document.getElementById('achievementList');
+        achievementList.innerHTML = '';
+        
+        const filteredAchievements = Object.values(achievements).filter(achievement => {
+            return category === 'all' || achievement.category === category;
+        });
+        
+        // カテゴリー別にソート（解除済み → 未解除、ポイント順）
+        filteredAchievements.sort((a, b) => {
+            if (a.unlocked !== b.unlocked) {
+                return b.unlocked - a.unlocked; // 解除済みを先に
+            }
+            return b.points - a.points; // ポイント高い順
+        });
+        
+        filteredAchievements.forEach(achievement => {
+            const achievementCard = document.createElement('div');
+            achievementCard.className = `achievement-card ${achievement.unlocked ? 'unlocked' : 'locked'}`;
+            
+            achievementCard.innerHTML = `
+                <div class="achievement-icon">${achievement.icon}</div>
+                <div class="achievement-info">
+                    <div class="achievement-name">${achievement.name}</div>
+                    <div class="achievement-description">${achievement.description}</div>
+                    <div class="achievement-meta">
+                        <span class="achievement-category">${this.getCategoryDisplayName(achievement.category)}</span>
+                        <span class="achievement-points">${achievement.points}P</span>
+                    </div>
+                </div>
+                ${achievement.unlocked ? '<div class="achievement-check">✓</div>' : ''}
+            `;
+            
+            achievementList.appendChild(achievementCard);
+        });
+        
+        if (!document.getElementById('achievementCardStyles')) {
+            this.addAchievementStyles();
+        }
+    }
+
+    getCategoryDisplayName(category) {
+        const categoryNames = {
+            basic: '基本',
+            score: 'スコア',
+            technical: 'テクニカル',
+            special: '特殊',
+            progress: '進歩',
+            rank: '段位',
+            challenge: 'チャレンジ'
+        };
+        return categoryNames[category] || category;
+    }
+
+    addAchievementStyles() {
+        const style = document.createElement('style');
+        style.id = 'achievementCardStyles';
+        style.textContent = `
+            .achievement-container {
+                width: 90vw;
+                max-width: 1000px;
+                height: 85vh;
+                max-height: 800px;
+                padding: 40px;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .achievement-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 30px;
+                padding-bottom: 20px;
+                border-bottom: 2px solid var(--glass-border);
+            }
+            
+            .achievement-title {
+                font-size: 2.5em;
+                font-weight: 700;
+                background: var(--gold-gradient);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin: 0;
+            }
+            
+            .achievement-progress {
+                margin-bottom: 30px;
+            }
+            
+            .progress-stats {
+                display: flex;
+                justify-content: space-around;
+                margin-bottom: 20px;
+            }
+            
+            .progress-item {
+                text-align: center;
+            }
+            
+            .progress-label {
+                display: block;
+                font-size: 0.9em;
+                color: var(--text-secondary);
+                margin-bottom: 5px;
+            }
+            
+            .progress-value {
+                font-size: 1.4em;
+                font-weight: 700;
+                color: var(--accent-green);
+            }
+            
+            .achievement-progress-bar {
+                height: 12px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 6px;
+                overflow: hidden;
+                border: 1px solid var(--glass-border);
+            }
+            
+            .achievement-progress-fill {
+                height: 100%;
+                background: var(--gold-gradient);
+                transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                border-radius: 6px;
+            }
+            
+            .achievement-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            
+            .achievement-categories {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 20px;
+                flex-wrap: wrap;
+            }
+            
+            .category-tab {
+                background: var(--glass-bg);
+                border: 1px solid var(--glass-border);
+                color: var(--text-secondary);
+                padding: 8px 16px;
+                border-radius: 20px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 0.9em;
+                font-weight: 500;
+            }
+            
+            .category-tab:hover {
+                background: rgba(255, 255, 255, 0.15);
+                border-color: var(--accent-green);
+            }
+            
+            .category-tab.active {
+                background: var(--accent-green);
+                color: var(--primary-dark);
+                border-color: var(--accent-green);
+                font-weight: 600;
+            }
+            
+            .achievement-list {
+                flex: 1;
+                overflow-y: auto;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                gap: 20px;
+                padding: 10px;
+            }
+            
+            .achievement-card {
+                background: var(--glass-bg);
+                border: 2px solid var(--glass-border);
+                border-radius: 16px;
+                padding: 20px;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                transition: all 0.3s ease;
+                position: relative;
+            }
+            
+            .achievement-card.unlocked {
+                border-color: var(--accent-green);
+                box-shadow: 0 4px 20px rgba(0, 255, 136, 0.2);
+            }
+            
+            .achievement-card.locked {
+                opacity: 0.6;
+                border-color: rgba(255, 255, 255, 0.1);
+            }
+            
+            .achievement-card:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-deep);
+            }
+            
+            .achievement-icon {
+                font-size: 2.5em;
+                text-align: center;
+                width: 60px;
+                flex-shrink: 0;
+            }
+            
+            .achievement-info {
+                flex: 1;
+            }
+            
+            .achievement-name {
+                font-size: 1.2em;
+                font-weight: 700;
+                margin-bottom: 6px;
+                color: var(--text-primary);
+            }
+            
+            .achievement-description {
+                font-size: 0.95em;
+                color: var(--text-secondary);
+                margin-bottom: 10px;
+                line-height: 1.4;
+            }
+            
+            .achievement-meta {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .achievement-category {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 0.8em;
+                color: var(--text-secondary);
+            }
+            
+            .achievement-points {
+                font-weight: 700;
+                color: var(--accent-green);
+                font-size: 1em;
+            }
+            
+            .achievement-check {
+                position: absolute;
+                top: 12px;
+                right: 12px;
+                color: var(--accent-green);
+                font-size: 1.5em;
+                font-weight: 700;
+            }
+            
+            .achievement-card.unlocked .achievement-points {
+                color: var(--gold-gradient);
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
     updateOverallStats(scoreManager) {
         const overallStats = document.getElementById('overallStats');
         const stats = scoreManager.getStatistics();
@@ -344,6 +645,31 @@ class UIManager {
                 <span class="overall-stat-value" style="color: ${stats.bestDan.color}">${stats.bestDan.name}</span>
             </div>
         `;
+    }
+
+    updateComboCounter(comboCount, isActive) {
+        if (!this.elements.comboCounter) return;
+        
+        if (comboCount >= 2 && isActive) {
+            this.elements.comboCounter.textContent = `${comboCount} COMBO`;
+            this.elements.comboCounter.classList.remove('hidden');
+            
+            // コンボレベルに応じてスタイル変更
+            this.elements.comboCounter.classList.remove('combo-high', 'combo-extreme');
+            if (comboCount >= 7) {
+                this.elements.comboCounter.classList.add('combo-extreme');
+            } else if (comboCount >= 4) {
+                this.elements.comboCounter.classList.add('combo-high');
+            }
+        } else {
+            this.elements.comboCounter.classList.add('hidden');
+        }
+    }
+
+    showComboBreak(comboCount) {
+        if (comboCount >= 2) {
+            this.showMessage(`COMBO BREAK! (${comboCount} コンボ)`, 1500, 'combo-break-message');
+        }
     }
 
     showScoreAnimation(amount, position, isBonus = false) {
@@ -552,7 +878,7 @@ class UIManager {
         }
     }
 
-    updateExchangeButtonState(canAfford, isFever) {
+    updateExchangeButtonState(canAfford, isFever, currentCost = 30) {
         const hintKey = document.querySelector('.hint-key');
         const hintText = document.querySelector('.hint-text');
         
@@ -563,12 +889,12 @@ class UIManager {
                 hintText.style.color = '#ffd700';
                 hintKey.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
             } else if (canAfford) {
-                hintText.textContent = '交換 (-30P)';
+                hintText.textContent = `交換 (-${currentCost}P)`;
                 hintKey.style.color = 'var(--accent-green)';
                 hintText.style.color = 'var(--text-secondary)';
                 hintKey.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
             } else {
-                hintText.textContent = '交換 (-30P)';
+                hintText.textContent = `交換 (-${currentCost}P)`;
                 hintKey.style.color = 'var(--accent-red)';
                 hintText.style.color = 'var(--accent-red)';
                 hintKey.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
@@ -605,9 +931,9 @@ class UIManager {
     reset() {
         this.updateScore(0);
         this.updatePoints(0);
-        this.updateFeverGauge({ current: 0, needed: 30, percentage: 0 });
+        this.updateFeverGauge({ current: 0, needed: 20, percentage: 0 });
         this.updateLevel(1);
-        this.updateLevelProgress({ current: 0, needed: 10, percentage: 0 });
+        this.updateLevelProgress({ current: 0, needed: 30, percentage: 0 });
         this.updateStats({
             totalLines: 0,
             tetrisCount: 0,

@@ -482,6 +482,39 @@ body::before {
     animation: comboPulse 1s ease-in-out infinite alternate;
 }
 
+.combo-counter {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(78, 205, 196, 0.2));
+    border: 1px solid rgba(0, 255, 136, 0.5);
+    border-radius: 8px;
+    padding: 4px 12px;
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--accent-green);
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.6);
+    animation: comboCounterPulse 0.8s ease-in-out infinite alternate;
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.combo-counter.combo-high {
+    color: #ffd700;
+    border-color: rgba(255, 215, 0, 0.6);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.2));
+    text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+}
+
+.combo-counter.combo-extreme {
+    color: #ff1493;
+    border-color: rgba(255, 20, 147, 0.6);
+    background: linear-gradient(135deg, rgba(255, 20, 147, 0.2), rgba(255, 107, 107, 0.2));
+    text-shadow: 0 0 16px rgba(255, 20, 147, 1);
+}
+
+@keyframes comboCounterPulse {
+    0% { transform: scale(1); opacity: 0.9; }
+    100% { transform: scale(1.05); opacity: 1; }
+}
+
 .back-to-back-display {
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.2));
     border: 1px solid rgba(255, 215, 0, 0.6);
@@ -826,6 +859,29 @@ body::before {
     box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
+/* 実績ボタン */
+.achievement-button {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-width: 200px;
+}
+
+.achievement-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(240, 147, 251, 0.4);
+}
+
 /* ゲームオーバー統計 */
 .game-stats-section {
     margin: 20px 0;
@@ -884,6 +940,77 @@ body::before {
     border: 2px solid rgba(255, 215, 0, 0.6);
     border-radius: 8px;
     text-align: center;
+}
+
+/* 段位昇格オーバーレイ */
+.dan-promotion-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: danPromotionFadeIn 0.5s ease-out;
+}
+
+.dan-promotion-content {
+    text-align: center;
+    padding: 40px;
+    background: var(--glass-bg);
+    border-radius: 20px;
+    border: 2px solid var(--glass-border);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    animation: danPromotionBounce 0.8s ease-out;
+}
+
+.dan-promotion-title {
+    font-size: 2.5em;
+    font-weight: 700;
+    color: #ffd700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+    margin-bottom: 20px;
+    animation: titleGlow 2s ease-in-out infinite alternate;
+}
+
+.dan-promotion-name {
+    font-size: 3em;
+    font-weight: 900;
+    margin: 20px 0;
+    text-shadow: 0 0 30px currentColor;
+    animation: nameFlash 1.5s ease-in-out infinite;
+}
+
+.dan-promotion-bonus {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: var(--accent-green);
+    margin-top: 20px;
+    text-shadow: 0 0 15px rgba(0, 255, 136, 0.6);
+}
+
+@keyframes danPromotionFadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+@keyframes danPromotionBounce {
+    0% { transform: scale(0.5) translateY(100px); opacity: 0; }
+    60% { transform: scale(1.1) translateY(-20px); opacity: 1; }
+    100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes titleGlow {
+    0% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+    100% { text-shadow: 0 0 30px rgba(255, 215, 0, 1); }
+}
+
+@keyframes nameFlash {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
 }
 
 .promotion-text {

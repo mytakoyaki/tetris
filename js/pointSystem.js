@@ -1,6 +1,6 @@
 const POINT_VALUES = {
     TETROMINO_PLACED: 10,
-    EXCHANGE_COST: 30,
+    EXCHANGE_BASE_COST: 30,
     SOFT_DROP_BONUS: 0.5,
     HARD_DROP_BONUS: 1,
     TECHNICAL_BONUS: 50,
@@ -12,10 +12,23 @@ const POINT_VALUES = {
     }
 };
 
+const EXCHANGE_COST_SYSTEM = {
+    BASE_COST: 30,
+    COSTS: [30, 45, 65, 90, 120], // 1回目〜5回目以降のコスト
+    MAX_COST: 120
+};
+
 const FEVER_CONFIG = {
-    BLOCKS_NEEDED: 25,
-    DURATION: 25000,
-    SCORE_MULTIPLIER: 3
+    BLOCKS_NEEDED: 20,
+    DURATION: 30000,
+    SCORE_MULTIPLIER: 4
+};
+
+const COMBO_CONFIG = {
+    MIN_COMBO: 2,
+    MAX_COMBO_MULTIPLIER: 3.0,
+    COMBO_DECAY_TIME: 3000,
+    BASE_MULTIPLIER: 0.1
 };
 
 class PointSystem {
@@ -34,16 +47,25 @@ class PointSystem {
         this.backToBackCount = 0;
         this.isBackToBackActive = false;
         this.lastClearWasSpecial = false;
+        this.comboTimer = 0;
+        this.comboActive = false;
+        this.exchangeCount = 0; // 連続交換回数
         this.callbacks = {
             onPointsChange: null,
             onScoreChange: null,
             onBlocksPlacedChange: null,
             onLevelChange: null,
-            onStatsChange: null
+            onStatsChange: null,
+            onComboBreak: null
         };
     }
 
     addPoints(amount) {
+        // フィーバーモード中はポイント加算なし（無制限交換が特典のため）
+        if (this.scoreMultiplier > 1) {
+            return; // フィーバーモード中は加算しない
+        }
+        
         this.points += amount;
         if (this.callbacks.onPointsChange) {
             this.callbacks.onPointsChange(this.points);
@@ -81,12 +103,17 @@ class PointSystem {
     }
 
     getLevelMultiplier() {
-        if (this.level >= 25) return 3.0;
-        if (this.level >= 20) return 2.5;
-        if (this.level >= 15) return 2.0;
-        if (this.level >= 10) return 1.5;
-        if (this.level >= 5) return 1.2;
-        return 1.0;
+        // CLAUDE.mdの詳細なレベル別スコア倍率テーブル
+        const scoreMultipliers = {
+            1: 1.0,   2: 1.05,  3: 1.1,   4: 1.15,  5: 1.2,
+            6: 1.25,  7: 1.3,   8: 1.35,  9: 1.4,   10: 1.5,
+            11: 1.6,  12: 1.7,  13: 1.8,  14: 1.9,  15: 2.0,
+            16: 2.1,  17: 2.2,  18: 2.3,  19: 2.4,  20: 2.5,
+            21: 2.6,  22: 2.7,  23: 2.8,  24: 2.9,  25: 3.0,
+            26: 3.1,  27: 3.2,  28: 3.3,  29: 3.4,  30: 3.5
+        };
+        
+        return scoreMultipliers[this.level] || 3.5;
     }
 
     showScorePopup(amount, position, isBonus = false) {
@@ -111,6 +138,9 @@ class PointSystem {
     onTetrominoPlaced(softDropDistance = 0, hardDropDistance = 0, isHardDrop = false) {
         this.blocksPlaced += 1;
         this.totalBlocksPlaced += 1;
+        
+        // ブロック設置時に交換コストリセット
+        this.exchangeCount = 0;
         
         let pointsEarned = POINT_VALUES.TETROMINO_PLACED;
         let bonusDetails = [];
@@ -141,9 +171,12 @@ class PointSystem {
         
         this.addPoints(pointsEarned);
         
-        // Show point bonus if there were any bonuses
+        // Show point bonus if there were any bonuses (表示のみ、フィーバー中でも表示)
         if (bonusDetails.length > 0) {
-            this.showPointBonus(pointsEarned, bonusDetails);
+            const displayText = this.scoreMultiplier > 1 ? 
+                `FEVER中 (ポイント停止)` : 
+                `+${pointsEarned}P`;
+            this.showPointBonus(displayText, bonusDetails);
         }
 
         if (this.callbacks.onBlocksPlacedChange) {
@@ -203,14 +236,8 @@ class PointSystem {
         this.linesCleared += lineCount;
         this.totalLines += lineCount;
         
-        // Check for level up
-        const newLevel = Math.floor(this.totalLines / 10) + 1;
-        if (newLevel > this.level) {
-            this.level = newLevel;
-            if (this.callbacks.onLevelChange) {
-                this.callbacks.onLevelChange(this.level);
-            }
-        }
+        // レベルアップはtime-basedなので、ここでは処理しない
+        // script.jsのupdateメソッドでタイマーベースで管理
         
         // Tetris count
         if (lineCount === 4) {
@@ -261,7 +288,10 @@ class PointSystem {
         // Add technical bonus points
         if (pointsGained > 0) {
             this.addPoints(pointsGained);
-            this.showPointBonus(pointsGained, [{ type: 'Technical Bonus', amount: pointsGained }]);
+            const displayText = this.scoreMultiplier > 1 ? 
+                `FEVER中 (ポイント停止)` : 
+                `+${pointsGained}P`;
+            this.showPointBonus(displayText, [{ type: 'Technical Bonus', amount: pointsGained }]);
         }
         
         // Show technical bonus display
@@ -295,15 +325,48 @@ class PointSystem {
         return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     }
 
+    getCurrentExchangeCost() {
+        const costIndex = Math.min(this.exchangeCount, EXCHANGE_COST_SYSTEM.COSTS.length - 1);
+        return EXCHANGE_COST_SYSTEM.COSTS[costIndex];
+    }
+
     canExchangeNext() {
-        return this.canAfford(POINT_VALUES.EXCHANGE_COST);
+        return this.canAfford(this.getCurrentExchangeCost());
     }
 
     exchangeNext() {
-        if (this.spendPoints(POINT_VALUES.EXCHANGE_COST)) {
+        const cost = this.getCurrentExchangeCost();
+        if (this.spendPoints(cost)) {
+            this.exchangeCount++;
+            
+            // コスト表示（累積表示用）
+            this.showExchangeCostDisplay(cost);
+            
             return true;
         }
         return false;
+    }
+
+    showExchangeCostDisplay(cost) {
+        const display = document.getElementById('pointBonus');
+        if (!display) return;
+        
+        const nextCost = this.getCurrentExchangeCost();
+        let text = `-${cost}P`;
+        if (this.exchangeCount > 0) {
+            text += ` (次回: ${nextCost}P)`;
+        }
+        
+        display.textContent = text;
+        display.classList.remove('hidden');
+        display.style.left = '25%';
+        display.style.top = '30%';
+        display.style.transform = 'translate(-50%, -50%)';
+        display.style.color = '#ff6b6b'; // 赤色でコスト表示
+        
+        setTimeout(() => {
+            display.classList.add('hidden');
+        }, 2000);
     }
 
     getFreeExchangesRemaining() {
@@ -326,21 +389,33 @@ class PointSystem {
         };
     }
     
-    getLevelProgress() {
-        const currentLevelLines = this.totalLines % 10;
-        const percentage = (currentLevelLines / 10) * 100;
+    getLevelProgress(gameStartTime) {
+        if (!gameStartTime) return { current: 0, needed: 30, percentage: 0 };
+        
+        const elapsedTime = Date.now() - gameStartTime;
+        const timeToNextLevel = 30000; // 30秒
+        const currentLevelTime = elapsedTime % timeToNextLevel;
+        const percentage = (currentLevelTime / timeToNextLevel) * 100;
         
         return {
-            current: currentLevelLines,
-            needed: 10,
+            current: Math.floor(currentLevelTime / 1000),
+            needed: 30,
             percentage
         };
     }
     
     getDropSpeed() {
-        const baseSpeed = 1000;
-        const speedReduction = Math.min(this.level - 1, 15) * 50;
-        return Math.max(baseSpeed - speedReduction, 100);
+        // CLAUDE.mdの詳細な落下速度テーブル（秒/行 → ミリ秒変換）
+        const fallSpeeds = {
+            1: 1000,  2: 900,   3: 800,   4: 700,   5: 600,
+            6: 550,   7: 500,   8: 450,   9: 400,   10: 400,
+            11: 380,  12: 360,  13: 340,  14: 320,  15: 300,
+            16: 280,  17: 260,  18: 250,  19: 240,  20: 250,
+            21: 240,  22: 230,  23: 220,  24: 210,  25: 220,
+            26: 210,  27: 205,  28: 200,  29: 200,  30: 200
+        };
+        
+        return fallSpeeds[this.level] || 200;
     }
     
     showTechnicalBonus(bonusDetails, finalScore) {
@@ -380,12 +455,12 @@ class PointSystem {
         }, 2500);
     }
     
-    showPointBonus(points, bonusDetails) {
+    showPointBonus(displayText, bonusDetails) {
         const pointDisplay = document.getElementById('pointBonus');
         if (!pointDisplay) return;
         
-        let bonusText = `+${points}P`;
-        if (bonusDetails.length > 0) {
+        let bonusText = typeof displayText === 'string' ? displayText : `+${displayText}P`;
+        if (bonusDetails.length > 0 && typeof displayText !== 'string') {
             bonusText += ` (${bonusDetails[0].description || bonusDetails[0].type})`;
         }
         
@@ -428,6 +503,42 @@ class PointSystem {
         }
     }
 
+    // コンボタイマー更新
+    updateComboTimer() {
+        if (this.comboActive && this.comboTimer) {
+            const elapsed = Date.now() - this.comboTimer;
+            if (elapsed > COMBO_CONFIG.COMBO_DECAY_TIME) {
+                this.breakCombo();
+            }
+        }
+    }
+
+    // コンボブレイク
+    breakCombo() {
+        if (this.comboCount >= COMBO_CONFIG.MIN_COMBO) {
+            // UIにコンボブレイクを通知
+            if (this.callbacks.onComboBreak) {
+                this.callbacks.onComboBreak(this.comboCount);
+            }
+        }
+        this.comboCount = 0;
+        this.comboActive = false;
+        this.comboTimer = 0;
+    }
+
+    // スコアマネージャーを設定
+    setScoreManager(scoreManager) {
+        this.scoreManager = scoreManager;
+    }
+
+    // スコア更新時に段位チェック
+    checkDanPromotion() {
+        if (this.scoreManager) {
+            return this.scoreManager.checkDanPromotion(this.score, this);
+        }
+        return { promoted: false };
+    }
+
     reset() {
         this.points = 0;
         this.score = 0;
@@ -443,6 +554,14 @@ class PointSystem {
         this.backToBackCount = 0;
         this.isBackToBackActive = false;
         this.lastClearWasSpecial = false;
+        this.comboTimer = 0;
+        this.comboActive = false;
+        this.exchangeCount = 0;
+        
+        // スコアマネージャーの段位チェックもリセット
+        if (this.scoreManager) {
+            this.scoreManager.lastDanRank = null;
+        }
         
         if (this.callbacks.onPointsChange) {
             this.callbacks.onPointsChange(this.points);

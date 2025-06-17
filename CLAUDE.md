@@ -92,7 +92,7 @@ npx serve .
 1. フィーバーモード発動アニメーション（「FEVER!」表示）
 2. ボーナススコア表示（「+2400 (x3 BONUS!)」）
 3. フィーバータイマー/ゲージ表示
-4. ブロック交換コスト表示（「-30P」）
+4. ブロック交換コスト表示（「-30P」→「-45P」→「-65P」と累積表示）
 5. フィーバーモード中の背景エフェクト
 
 ## デザイン要件 - 高級感の追求
@@ -169,8 +169,9 @@ npx serve .
 - **E**: NEXTブロック交換
 
 ### 3.3 レベルシステム
-- **レベルアップ**: 10ライン消すごとにレベルが1上昇し、ブロックの自然落下速度が速くなる
-- **スコア倍率**: レベルに応じてスコア倍率が上昇（レベル5: 1.2倍、レベル10: 1.5倍、レベル15: 2.0倍、レベル20: 2.5倍、レベル25: 3.0倍）
+- **レベルアップ**: 30秒経過するごとにレベルが1上昇し、ブロックの自然落下速度が速くなる
+- **自然落下速度**: レベル1: 1秒/行、レベル5: 0.6秒/行、レベル10: 0.4秒/行、レベル15: 0.3秒/行、レベル20: 0.25秒/行、レベル25: 0.22秒/行、レベル30: 0.2秒/行
+- **スコア倍率**: レベルに応じてスコア倍率が上昇（レベル5: 1.2倍、レベル10: 1.5倍、レベル15: 2.0倍、レベル20: 2.5倍、レベル25: 3.0倍、レベル30: 3.5倍）
 
 ### 3.4 基本スコア計算
 - **1ライン**: 100点
@@ -193,8 +194,15 @@ npx serve .
 - ソフトドロップは1行につき0.5ポイント、ハードドロップは1行につき1ポイントに調整
 
 ### 4.2 NEXTブロック交換 (エクスチェンジ)
-- **機能**: 30ポイントを消費し、NEXTブロックを別のランダムなブロックに交換する
-- **戦略性**: 不利なブロックを有利なブロックに変更可能
+- **基本コスト**: 30ポイントを消費し、NEXTブロックを別のランダムなブロックに交換する
+- **累積コストシステム**: 連続でブロック交換を行うと、交換コストが累積的に上昇する
+  - 1回目: 30ポイント
+  - 2回目: 45ポイント（+15）
+  - 3回目: 65ポイント（+20）
+  - 4回目: 90ポイント（+25）
+  - 5回目以降: 120ポイント（+30ずつ増加）
+- **コストリセット**: ブロックを1つ設置すると累積コストがリセットされ、基本コスト（30ポイント）に戻る
+- **戦略性**: 不利なブロックを有利なブロックに変更可能だが、連続使用には制限がある
 
 ### 4.3 フィーバーモード
 - **突入条件**: ブロックを累計で20個設置するごとに自動で発動
@@ -491,7 +499,7 @@ const ACHIEVEMENTS = {
         name: '初回ライン消去',
         description: '初めてラインを消去しました',
         condition: (stats) => stats.totalLines >= 1,
-        reward: { points: 10, icon: '🎯' },
+        reward: { profileExp: 10, icon: '🎯' },
         category: 'basic'
     },
     DAILY_PLAYER: {
@@ -499,7 +507,7 @@ const ACHIEVEMENTS = {
         name: '連続プレイヤー',
         description: '7日連続でプレイしました',
         condition: (stats) => stats.consecutiveDays >= 7,
-        reward: { points: 50, icon: '🔥' },
+        reward: { profileExp: 50, icon: '🔥' },
         category: 'persistence'
     },
     SCORE_MILESTONE_1K: {
@@ -507,7 +515,7 @@ const ACHIEVEMENTS = {
         name: 'スコア1000点達成',
         description: 'スコア1000点を達成しました',
         condition: (stats) => stats.highestScore >= 1000,
-        reward: { points: 20, icon: '⭐' },
+        reward: { profileExp: 20, icon: '⭐' },
         category: 'score'
     },
     TETRIS_MASTER: {
@@ -515,7 +523,7 @@ const ACHIEVEMENTS = {
         name: 'テトリスマスター',
         description: 'テトリス（4ライン消去）を10回達成',
         condition: (stats) => stats.totalTetris >= 10,
-        reward: { points: 100, icon: '🏆' },
+        reward: { profileExp: 100, icon: '🏆' },
         category: 'skill'
     },
     T_SPIN_EXPERT: {
@@ -523,7 +531,7 @@ const ACHIEVEMENTS = {
         name: 'T-Spinエキスパート',
         description: 'T-Spinを5回達成',
         condition: (stats) => stats.totalTSpin >= 5,
-        reward: { points: 80, icon: '🌀' },
+        reward: { profileExp: 80, icon: '🌀' },
         category: 'skill'
     },
     FEVER_LOVER: {
@@ -531,7 +539,7 @@ const ACHIEVEMENTS = {
         name: 'フィーバー愛好者',
         description: 'フィーバーモードを50回発動',
         condition: (stats) => stats.totalFever >= 50,
-        reward: { points: 150, icon: '⚡' },
+        reward: { profileExp: 150, icon: '⚡' },
         category: 'fever'
     }
 };
@@ -541,7 +549,7 @@ const ACHIEVEMENTS = {
 1. **実績管理システム**
    - 実績の進捗追跡（localStorage使用）
    - 達成条件のリアルタイムチェック
-   - 報酬の自動付与
+   - プロフィール経験値の自動付与
    - 実績カテゴリ別の管理
 
 2. **実績表示UI**
@@ -553,7 +561,7 @@ const ACHIEVEMENTS = {
 3. **実績通知**
    - 達成時のポップアップ表示（3秒間）
    - 実績獲得音（段階的な音階）
-   - 報酬の視覚的表示（ポイント数とアイコン）
+   - プロフィール経験値の視覚的表示
    - 実績履歴の記録
 
 ### 11.4 視覚的フィードバック強化
@@ -637,7 +645,7 @@ const DAILY_CHALLENGES = {
         description: '10ライン消去する',
         target: 10,
         type: 'lines',
-        reward: { points: 30, streak: 1 },
+        reward: { profileExp: 30, streak: 1 },
         difficulty: 'easy'
     },
     FEVER_3: {
@@ -646,7 +654,7 @@ const DAILY_CHALLENGES = {
         description: 'フィーバーモードを3回発動する',
         target: 3,
         type: 'fever',
-        reward: { points: 50, streak: 1 },
+        reward: { profileExp: 50, streak: 1 },
         difficulty: 'medium'
     },
     SCORE_5K: {
@@ -655,7 +663,7 @@ const DAILY_CHALLENGES = {
         description: '5000点を達成する',
         target: 5000,
         type: 'score',
-        reward: { points: 100, streak: 2 },
+        reward: { profileExp: 100, streak: 2 },
         difficulty: 'hard'
     },
     TETRIS_2: {
@@ -664,7 +672,7 @@ const DAILY_CHALLENGES = {
         description: 'テトリス（4ライン消去）を2回達成する',
         target: 2,
         type: 'tetris',
-        reward: { points: 80, streak: 1 },
+        reward: { profileExp: 80, streak: 1 },
         difficulty: 'medium'
     },
     T_SPIN_1: {
@@ -673,7 +681,7 @@ const DAILY_CHALLENGES = {
         description: 'T-Spinを1回達成する',
         target: 1,
         type: 'tspin',
-        reward: { points: 120, streak: 2 },
+        reward: { profileExp: 120, streak: 2 },
         difficulty: 'expert'
     }
 };
@@ -682,9 +690,9 @@ const DAILY_CHALLENGES = {
 #### **連続達成ボーナス**
 ```javascript
 const STREAK_BONUS = {
-    3: { points: 50, title: '連続達成者', icon: '🔥' },
-    7: { points: 150, title: '週間チャンピオン', icon: '👑' },
-    30: { points: 500, title: '月間マスター', icon: '🏆' }
+    3: { profileExp: 50, title: '連続達成者', icon: '🔥' },
+    7: { profileExp: 150, title: '週間チャンピオン', icon: '👑' },
+    30: { profileExp: 500, title: '月間マスター', icon: '🏆' }
 };
 ```
 
@@ -692,7 +700,7 @@ const STREAK_BONUS = {
 1. **チャレンジ管理**
    - 日替わりチャレンジの生成（ランダム選択）
    - 進捗の追跡と更新（localStorage使用）
-   - 達成判定と報酬付与
+   - 達成判定とプロフィール経験値付与
    - チャレンジリセット（毎日0時）
 
 2. **チャレンジUI**
@@ -818,28 +826,24 @@ const FIELD_THEMES = {
 const BGM_TRACKS = {
     default: {
         name: 'メインテーマ',
-        file: 'bgm_main.mp3',
         volume: 0.7,
         loop: true,
         description: '落ち着いたメインテーマ'
     },
     fever: {
         name: 'フィーバーモード',
-        file: 'bgm_fever.mp3',
         volume: 0.8,
         loop: true,
         description: 'アップテンポなフィーバーモードBGM'
     },
     dan_achievement: {
         name: '段位達成',
-        file: 'bgm_achievement.mp3',
         volume: 0.9,
         loop: false,
         description: '段位達成時の特別BGM'
     },
     game_over: {
         name: 'ゲームオーバー',
-        file: 'bgm_gameover.mp3',
         volume: 0.6,
         loop: false,
         description: 'ゲームオーバー時のBGM'
@@ -851,17 +855,17 @@ const BGM_TRACKS = {
 ```javascript
 const SFX = {
     line_clear: {
-        single: { file: 'sfx_single.mp3', volume: 0.8 },
-        double: { file: 'sfx_double.mp3', volume: 0.8 },
-        triple: { file: 'sfx_triple.mp3', volume: 0.8 },
-        tetris: { file: 'sfx_tetris.mp3', volume: 0.9 }
+        single: { volume: 0.8 },
+        double: { volume: 0.8 },
+        triple: { volume: 0.8 },
+        tetris: { volume: 0.9 }
     },
-    block_place: { file: 'sfx_place.mp3', volume: 0.6 },
-    fever_start: { file: 'sfx_fever.mp3', volume: 0.9 },
-    dan_up: { file: 'sfx_dan.mp3', volume: 0.9 },
-    achievement: { file: 'sfx_achievement.mp3', volume: 0.8 },
-    combo: { file: 'sfx_combo.mp3', volume: 0.7 },
-    button_click: { file: 'sfx_click.mp3', volume: 0.5 }
+    block_place: { volume: 0.6 },
+    fever_start: { volume: 0.9 },
+    dan_up: { volume: 0.9 },
+    achievement: { volume: 0.8 },
+    combo: { volume: 0.7 },
+    button_click: { volume: 0.5 }
 };
 ```
 
@@ -884,7 +888,43 @@ const SFX = {
    - ミュート機能
    - 音声テスト機能
 
-### 11.8 実装優先度とスケジュール
+### 11.8 プロフィールシステム
+
+#### **プロフィールレベルシステム**
+```javascript
+const PROFILE_LEVELS = {
+    EXP_PER_LEVEL: 100,  // レベルアップに必要な経験値
+    MAX_LEVEL: 100,      // 最大レベル
+    EXP_MULTIPLIER: 1.1  // レベルごとの経験値倍率
+};
+
+const PROFILE_REWARDS = {
+    10: { title: '初心者', icon: '🌱' },
+    25: { title: '中級者', icon: '🌿' },
+    50: { title: '上級者', icon: '🌳' },
+    75: { title: 'マスター', icon: '🏆' },
+    100: { title: '伝説', icon: '👑' }
+};
+```
+
+#### **実装内容**
+1. **プロフィール管理**
+   - プロフィール経験値の蓄積
+   - レベルアップ判定と処理
+   - プロフィール情報の保存
+
+2. **プロフィール画面**
+   - レベルと経験値の表示
+   - 獲得した称号の表示
+   - 統計情報の表示
+   - カスタマイズ設定
+
+3. **経験値獲得**
+   - 実績達成時の経験値付与
+   - デイリーチャレンジ達成時の経験値付与
+   - 連続達成ボーナスの経験値付与
+
+### 11.9 実装優先度とスケジュール
 
 #### **Phase 1（即座に実装可能）**
 1. **コンボシステム強化** - 既存機能の拡張（1-2日）
@@ -903,3 +943,85 @@ const SFX = {
 8. **リプレイ機能** - プレイ記録と分析（14-21日）
 
 各機能は独立して実装可能であり、優先度に応じて段階的に追加していくことができます。
+
+### 11.10 レベルシステム詳細仕様
+
+#### **時間ベースレベルアップシステム**
+```javascript
+const LEVEL_SYSTEM = {
+    LEVEL_UP_INTERVAL: 30000,  // 30秒（ミリ秒）
+    MAX_LEVEL: 30,             // 最大レベル
+    
+    // レベル別自然落下速度（秒/行）- より激しい上昇
+    FALL_SPEEDS: {
+        1: 1.0,   2: 0.9,   3: 0.8,   4: 0.7,   5: 0.6,
+        6: 0.55,  7: 0.5,   8: 0.45,  9: 0.4,   10: 0.4,
+        11: 0.38, 12: 0.36, 13: 0.34, 14: 0.32, 15: 0.3,
+        16: 0.28, 17: 0.26, 18: 0.25, 19: 0.24, 20: 0.25,
+        21: 0.24, 22: 0.23, 23: 0.22, 24: 0.21, 25: 0.22,
+        26: 0.21, 27: 0.205, 28: 0.2, 29: 0.2, 30: 0.2
+    },
+    
+    // レベル別スコア倍率
+    SCORE_MULTIPLIERS: {
+        1: 1.0,   2: 1.05,  3: 1.1,   4: 1.15,  5: 1.2,
+        6: 1.25,  7: 1.3,   8: 1.35,  9: 1.4,   10: 1.5,
+        11: 1.6,  12: 1.7,  13: 1.8,  14: 1.9,  15: 2.0,
+        16: 2.1,  17: 2.2,  18: 2.3,  19: 2.4,  20: 2.5,
+        21: 2.6,  22: 2.7,  23: 2.8,  24: 2.9,  25: 3.0,
+        26: 3.1,  27: 3.2,  28: 3.3,  29: 3.4,  30: 3.5
+    }
+};
+```
+
+#### **実装内容**
+1. **時間管理システム**
+   - ゲーム開始からの経過時間を追跡
+   - 30秒ごとのレベルアップ判定
+   - レベルアップ時の視覚・音響効果
+
+2. **落下速度管理**
+   - レベルに応じた落下速度の動的変更
+   - スムーズな速度変化（アニメーション）
+   - フィーバーモード中の速度調整
+
+3. **スコア倍率適用**
+   - リアルタイムでのスコア倍率計算
+   - レベルアップ時の倍率変更通知
+   - フィーバーモードとの組み合わせ計算
+
+### 11.11 ブロック交換累積コストシステム
+
+#### **累積コスト定義**
+```javascript
+const EXCHANGE_COST_SYSTEM = {
+    BASE_COST: 30,           // 基本コスト
+    COST_INCREMENTS: [15, 20, 25, 30],  // 累積増加量
+    MAX_COST: 120,           // 最大コスト
+    RESET_TRIGGER: 'block_placed'  // リセット条件
+};
+
+const EXCHANGE_COSTS = {
+    1: 30,   // 1回目
+    2: 45,   // 2回目（+15）
+    3: 65,   // 3回目（+20）
+    4: 90,   // 4回目（+25）
+    5: 120   // 5回目以降（+30ずつ）
+};
+```
+
+#### **実装内容**
+1. **コスト管理システム**
+   - 連続交換回数の追跡
+   - 累積コストの計算
+   - コストリセット条件の判定
+
+2. **UI表示システム**
+   - 現在の交換コストの表示
+   - 累積コストの視覚的警告
+   - コストリセットの通知
+
+3. **戦略的制限**
+   - 連続使用の制限
+   - コスト効率の最適化
+   - リスク管理の必要性

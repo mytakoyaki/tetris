@@ -5,6 +5,7 @@ class TetrisGame {
         this.feverMode = new FeverMode();
         this.ui = new UIManager();
         this.scoreManager = new ScoreManager();
+        this.achievementSystem = new AchievementSystem();
         
         this.gameState = 'start';
         this.isRunning = false;
@@ -50,6 +51,18 @@ class TetrisGame {
             this.clearAllScores();
         });
 
+        document.getElementById('achievementButton').addEventListener('click', () => {
+            this.showAchievements();
+        });
+
+        document.getElementById('viewAchievementButton').addEventListener('click', () => {
+            this.showAchievements();
+        });
+
+        document.getElementById('closeAchievementButton').addEventListener('click', () => {
+            this.hideAchievements();
+        });
+
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
         document.addEventListener('keyup', (e) => this.handleKeyUp(e));
         
@@ -65,7 +78,8 @@ class TetrisGame {
             this.ui.updatePoints(points);
             this.ui.updateExchangeButtonState(
                 this.pointSystem.canExchangeNext(), 
-                this.feverMode.getIsActive()
+                this.feverMode.getIsActive(),
+                this.pointSystem.getCurrentExchangeCost()
             );
         });
 
@@ -85,8 +99,24 @@ class TetrisGame {
         
         this.pointSystem.setCallback('onStatsChange', (stats) => {
             this.ui.updateStats(stats);
-            const levelProgress = this.pointSystem.getLevelProgress();
+            const levelProgress = this.pointSystem.getLevelProgress(this.gameStartTime);
             this.ui.updateLevelProgress(levelProgress);
+            
+            // コンボ表示更新
+            this.ui.updateComboCounter(this.pointSystem.comboCount, this.pointSystem.comboActive);
+        });
+
+        this.pointSystem.setCallback('onComboBreak', (comboCount) => {
+            this.ui.showComboBreak(comboCount);
+        });
+
+        // スコアマネージャーを設定
+        this.pointSystem.setScoreManager(this.scoreManager);
+
+        // 実績システムコールバック設定
+        this.achievementSystem.setCallback('onAchievementUnlocked', (achievement) => {
+            // 実績解除時にポイントボーナス付与（フィーバーモード中は無効）
+            this.pointSystem.addPoints(achievement.points);
         });
 
         this.feverMode.setCallback('onStart', () => {
@@ -110,6 +140,7 @@ class TetrisGame {
         this.pointSystem.reset();
         this.feverMode.reset();
         this.ui.reset();
+        this.achievementSystem.startSession();
         
         // Set initial drop speed
         this.gameField.setDropSpeed(this.pointSystem.getDropSpeed());
@@ -197,6 +228,12 @@ class TetrisGame {
             }
         }
 
+        // コンボタイマー更新
+        this.pointSystem.updateComboTimer();
+
+        // 時間ベースレベルアップシステム
+        this.updateLevelByTime();
+
         const lockResult = this.gameField.update(deltaTime);
         
         if (lockResult) {
@@ -204,6 +241,12 @@ class TetrisGame {
             this.handleTetrominoLocked(lockResult);
         }
 
+        // 段位昇格チェック
+        const promotionResult = this.pointSystem.checkDanPromotion();
+        if (promotionResult.promoted) {
+            // 段位昇格時の追加処理
+            this.updateUI();
+        }
     }
 
     render() {
@@ -221,7 +264,7 @@ class TetrisGame {
         const progress = this.pointSystem.getFeverProgress();
         this.ui.updateFeverGauge(progress);
         
-        const levelProgress = this.pointSystem.getLevelProgress();
+        const levelProgress = this.pointSystem.getLevelProgress(this.gameStartTime);
         this.ui.updateLevelProgress(levelProgress);
         
         this.ui.updateStats({
@@ -234,7 +277,8 @@ class TetrisGame {
         
         this.ui.updateExchangeButtonState(
             this.pointSystem.canExchangeNext(), 
-            this.feverMode.getIsActive()
+            this.feverMode.getIsActive(),
+            this.pointSystem.getCurrentExchangeCost()
         );
         
         // 段位表示更新
@@ -251,6 +295,21 @@ class TetrisGame {
         if (linesCleared > 0) {
             const score = this.pointSystem.onLinesCleared(linesCleared, 'normal', isTSpin, isAllClear);
             this.ui.addScreenShake(8, 200);
+            
+            // 実績更新
+            this.achievementSystem.updateStats('lines_cleared', linesCleared);
+            if (linesCleared === 4) {
+                this.achievementSystem.updateStats('tetris', 1);
+            }
+            if (isTSpin) {
+                this.achievementSystem.updateStats('tspin', 1);
+            }
+            if (isAllClear) {
+                this.achievementSystem.updateStats('perfect_clear', 1);
+            }
+            if (this.pointSystem.comboCount > 0) {
+                this.achievementSystem.updateStats('combo', this.pointSystem.comboCount);
+            }
         } else {
             // Reset combo if no lines cleared
             this.pointSystem.onLinesCleared(0);
@@ -259,7 +318,14 @@ class TetrisGame {
         if (this.pointSystem.shouldTriggerFever()) {
             this.feverMode.start();
             this.pointSystem.resetFeverProgress();
+            this.achievementSystem.updateStats('fever', 1);
         }
+
+        // スコアと段位の実績更新
+        this.achievementSystem.updateStats('score', this.pointSystem.score);
+        this.achievementSystem.updateStats('level', this.pointSystem.level);
+        const currentDan = this.scoreManager.getCurrentDan(this.pointSystem.score);
+        this.achievementSystem.updateStats('dan', currentDan.name);
 
         this.updateUI();
     }
@@ -382,6 +448,9 @@ class TetrisGame {
                 this.gameField.currentTetromino.y = 0;
             }
             
+            // 交換実績更新
+            this.achievementSystem.updateStats('exchange', 1);
+            
             this.render();
             this.ui.showMessage('ブロック交換!', 1000, 'exchange-message');
         } else {
@@ -426,6 +495,41 @@ class TetrisGame {
         if (confirm('本当に全ての記録を削除しますか？この操作は取り消せません。')) {
             this.scoreManager.clearAllScores();
             this.ui.updateRankingScreen(this.scoreManager);
+        }
+    }
+
+    showAchievements() {
+        this.ui.updateAchievementScreen(this.achievementSystem);
+        this.ui.showScreen('achievementScreen');
+    }
+
+    hideAchievements() {
+        const previousScreen = this.gameState === 'gameOver' ? 'gameOverScreen' : 'startScreen';
+        this.ui.showScreen(previousScreen);
+    }
+
+    updateLevelByTime() {
+        if (!this.gameStartTime) return;
+        
+        const elapsedTime = Date.now() - this.gameStartTime;
+        const newLevel = Math.min(Math.floor(elapsedTime / 30000) + 1, 30); // 30秒ごと、最大レベル30
+        
+        if (newLevel > this.pointSystem.level) {
+            this.pointSystem.level = newLevel;
+            
+            // レベルアップ時の処理
+            this.gameField.setDropSpeed(this.pointSystem.getDropSpeed());
+            this.ui.updateLevel(newLevel);
+            
+            // レベルアップエフェクト
+            this.ui.showMessage(`LEVEL UP! レベル ${newLevel}`, 2000, 'level-up-message');
+            
+            // 実績更新
+            this.achievementSystem.updateStats('level', newLevel);
+            
+            if (this.pointSystem.callbacks.onLevelChange) {
+                this.pointSystem.callbacks.onLevelChange(newLevel);
+            }
         }
     }
 }

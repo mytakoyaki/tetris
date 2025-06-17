@@ -24,6 +24,10 @@
                     <span class="button-text">RANKING</span>
                     <div class="button-shine"></div>
                 </button>
+                <button id="achievementButton" class="achievement-button">
+                    <span class="button-text">ACHIEVEMENTS</span>
+                    <div class="button-shine"></div>
+                </button>
             </div>
             <div class="particles-container"></div>
         </div>
@@ -46,7 +50,7 @@
                         <div class="level-progress-bar">
                             <div id="levelProgress" class="level-progress"></div>
                         </div>
-                        <div id="linesDisplay" class="lines-counter">0/10</div>
+                        <div id="linesDisplay" class="lines-counter">0s/30s</div>
                     </div>
                     <div class="dan-display-container">
                         <div class="dan-label">段位</div>
@@ -61,7 +65,7 @@
                             <div id="feverGauge" class="fever-gauge"></div>
                             <div class="fever-gauge-overlay"></div>
                         </div>
-                        <div id="feverCounter" class="fever-counter">0/25</div>
+                        <div id="feverCounter" class="fever-counter">0/20</div>
                     </div>
                 </div>
             </div>
@@ -77,7 +81,7 @@
                         <div class="fever-text">FEVER!</div>
                         <div class="fever-sparkles"></div>
                     </div>
-                    <div id="feverTimer" class="fever-timer premium-timer">25</div>
+                    <div id="feverTimer" class="fever-timer premium-timer">30</div>
                 </div>
             </div>
 
@@ -88,6 +92,7 @@
                     <div id="scoreDisplay" class="score-display premium-score">0</div>
                     <div class="score-details">
                         <div id="comboDisplay" class="combo-display hidden">COMBO x1</div>
+                        <div id="comboCounter" class="combo-counter hidden">0 COMBO</div>
                         <div id="backToBackDisplay" class="back-to-back-display hidden">B2B</div>
                     </div>
                 </div>
@@ -214,6 +219,10 @@
                     <span class="button-text">RANKING</span>
                     <div class="button-shine"></div>
                 </button>
+                <button id="viewAchievementButton" class="achievement-button">
+                    <span class="button-text">ACHIEVEMENTS</span>
+                    <div class="button-shine"></div>
+                </button>
             </div>
         </div>
     </div>
@@ -247,12 +256,53 @@
         </div>
     </div>
 
+    <!-- 実績画面 -->
+    <div id="achievementScreen" class="screen hidden">
+        <div class="achievement-container glass-panel">
+            <div class="achievement-header">
+                <h1 class="achievement-title">実績 - ACHIEVEMENTS</h1>
+                <button id="closeAchievementButton" class="close-button">×</button>
+            </div>
+            <div class="achievement-progress">
+                <div class="progress-stats">
+                    <div class="progress-item">
+                        <span class="progress-label">解除済み:</span>
+                        <span id="achievementProgress" class="progress-value">0/15</span>
+                    </div>
+                    <div class="progress-item">
+                        <span class="progress-label">達成率:</span>
+                        <span id="achievementPercentage" class="progress-value">0%</span>
+                    </div>
+                    <div class="progress-item">
+                        <span class="progress-label">獲得ポイント:</span>
+                        <span id="achievementPoints" class="progress-value">0P</span>
+                    </div>
+                </div>
+                <div class="achievement-progress-bar">
+                    <div id="achievementProgressFill" class="achievement-progress-fill"></div>
+                </div>
+            </div>
+            <div class="achievement-content">
+                <div class="achievement-categories">
+                    <button class="category-tab active" data-category="all">すべて</button>
+                    <button class="category-tab" data-category="basic">基本</button>
+                    <button class="category-tab" data-category="score">スコア</button>
+                    <button class="category-tab" data-category="technical">テクニカル</button>
+                    <button class="category-tab" data-category="special">特殊</button>
+                    <button class="category-tab" data-category="challenge">チャレンジ</button>
+                </div>
+                <div id="achievementList" class="achievement-list"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript読み込み -->
     <script src="js/tetrominos.js"></script>
     <script src="js/gameField.js"></script>
     <script src="js/pointSystem.js"></script>
     <script src="js/feverMode.js"></script>
     <script src="js/scoreManager.js"></script>
+    <script src="js/achievementSystem.js"></script>
     <script src="js/ui.js"></script>
     <script src="script.js"></script>
 </body>
