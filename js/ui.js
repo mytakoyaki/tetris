@@ -94,11 +94,11 @@ class UIManager {
         const container = document.createElement('div');
         container.className = 'tetromino-preview';
         container.style.position = 'relative';
-        container.style.width = '80px';
-        container.style.height = '80px';
+        container.style.width = '100px';
+        container.style.height = '100px';
 
         const rotation = tetromino.getCurrentRotation();
-        const blockSize = 18;
+        const blockSize = 20;
 
         let minX = 4, minY = 4, maxX = -1, maxY = -1;
         
@@ -115,20 +115,24 @@ class UIManager {
 
         const width = maxX - minX + 1;
         const height = maxY - minY + 1;
-        const offsetX = (80 - width * blockSize) / 2;
-        const offsetY = (80 - height * blockSize) / 2;
+        const offsetX = (100 - width * blockSize) / 2;
+        const offsetY = (100 - height * blockSize) / 2;
 
         for (let y = 0; y < rotation.length; y++) {
             for (let x = 0; x < rotation[y].length; x++) {
                 if (rotation[y][x]) {
                     const block = document.createElement('div');
                     block.className = `preview-block ${tetromino.shape.className}`;
-                    block.style.position = 'absolute';
-                    block.style.left = (offsetX + (x - minX) * blockSize) + 'px';
-                    block.style.top = (offsetY + (y - minY) * blockSize) + 'px';
-                    block.style.width = (blockSize - 1) + 'px';
-                    block.style.height = (blockSize - 1) + 'px';
-                    block.style.border = '1px solid rgba(255, 255, 255, 0.3)';
+                    block.style.cssText = `
+                        position: absolute;
+                        left: ${offsetX + (x - minX) * blockSize}px;
+                        top: ${offsetY + (y - minY) * blockSize}px;
+                        width: ${blockSize - 2}px;
+                        height: ${blockSize - 2}px;
+                        border: 1px solid rgba(255, 255, 255, 0.4);
+                        border-radius: 3px;
+                        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 4px rgba(0, 0, 0, 0.3);
+                    `;
                     container.appendChild(block);
                 }
             }
@@ -177,25 +181,41 @@ class UIManager {
         }
         
         popup.textContent = text;
-        popup.style.position = 'absolute';
-        popup.style.left = position.x + 'px';
-        popup.style.top = position.y + 'px';
-        popup.style.color = isBonus ? '#ffd700' : '#00ff88';
-        popup.style.fontSize = isBonus ? '1.5em' : '1.2em';
-        popup.style.fontWeight = 'bold';
-        popup.style.textShadow = '2px 2px 4px #000';
-        popup.style.pointerEvents = 'none';
-        popup.style.zIndex = '1000';
+        popup.style.cssText = `
+            position: absolute;
+            left: ${position.x}px;
+            top: ${position.y}px;
+            font-size: ${isBonus ? '1.8em' : '1.4em'};
+            font-weight: 700;
+            font-family: 'Consolas', 'Monaco', monospace;
+            pointer-events: none;
+            z-index: 1000;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px ${isBonus ? 'rgba(255, 215, 0, 0.8)' : 'rgba(0, 255, 136, 0.8)'};
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 8px 16px;
+            border-radius: 12px;
+            border: 1px solid ${isBonus ? 'rgba(255, 215, 0, 0.5)' : 'rgba(0, 255, 136, 0.5)'};
+            box-shadow: 0 4px 16px ${isBonus ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 255, 136, 0.3)'};
+        `;
+        
+        if (isBonus) {
+            popup.style.background = 'linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 140, 0, 0.2))';
+            popup.style.color = '#ffd700';
+        } else {
+            popup.style.color = 'var(--accent-green)';
+        }
         
         document.body.appendChild(popup);
         
-        popup.style.animation = 'scoreFloat 2s ease-out forwards';
+        popup.style.animation = `scoreFloat 2.5s cubic-bezier(0.4, 0, 0.2, 1) forwards`;
         
         setTimeout(() => {
             if (popup.parentNode) {
                 popup.parentNode.removeChild(popup);
             }
-        }, 2000);
+        }, 2500);
         
         if (!document.getElementById('scoreAnimationStyles')) {
             const style = document.createElement('style');
@@ -204,11 +224,14 @@ class UIManager {
                 @keyframes scoreFloat {
                     0% {
                         opacity: 1;
-                        transform: translateY(0);
+                        transform: translateY(0) scale(0.8);
+                    }
+                    20% {
+                        transform: translateY(-10px) scale(1.2);
                     }
                     100% {
                         opacity: 0;
-                        transform: translateY(-50px);
+                        transform: translateY(-80px) scale(1);
                     }
                 }
             `;
@@ -220,27 +243,84 @@ class UIManager {
         const message = document.createElement('div');
         message.className = `game-message ${className}`;
         message.textContent = text;
-        message.style.position = 'fixed';
-        message.style.top = '50%';
-        message.style.left = '50%';
-        message.style.transform = 'translate(-50%, -50%)';
-        message.style.background = 'rgba(0, 0, 0, 0.8)';
-        message.style.color = 'white';
-        message.style.padding = '20px 40px';
-        message.style.borderRadius = '10px';
-        message.style.fontSize = '1.5em';
-        message.style.fontWeight = 'bold';
-        message.style.zIndex = '9999';
-        message.style.border = '2px solid #ffd700';
-        message.style.textAlign = 'center';
+        message.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            color: var(--text-primary);
+            padding: 24px 48px;
+            border-radius: 16px;
+            font-size: 1.6em;
+            font-weight: 700;
+            z-index: 9999;
+            border: 2px solid var(--glass-border);
+            text-align: center;
+            box-shadow: var(--shadow-deep);
+            letter-spacing: 1px;
+            animation: messageAppear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        `;
+        
+        if (!document.getElementById('messageStyles')) {
+            const style = document.createElement('style');
+            style.id = 'messageStyles';
+            style.textContent = `
+                @keyframes messageAppear {
+                    0% { 
+                        opacity: 0;
+                        transform: translate(-50%, -50%) scale(0.8);
+                    }
+                    100% { 
+                        opacity: 1;
+                        transform: translate(-50%, -50%) scale(1);
+                    }
+                }
+                .error-message {
+                    border-color: var(--accent-red) !important;
+                    color: var(--accent-red) !important;
+                    box-shadow: 0 0 20px rgba(255, 107, 107, 0.3) !important;
+                }
+                .exchange-message {
+                    border-color: var(--accent-green) !important;
+                    color: var(--accent-green) !important;
+                    box-shadow: 0 0 20px rgba(0, 255, 136, 0.3) !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
         
         document.body.appendChild(message);
         
         setTimeout(() => {
             if (message.parentNode) {
-                message.parentNode.removeChild(message);
+                message.style.animation = 'messageDisappear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards';
+                setTimeout(() => {
+                    if (message.parentNode) {
+                        message.parentNode.removeChild(message);
+                    }
+                }, 300);
             }
-        }, duration);
+        }, duration - 300);
+        
+        if (!document.getElementById('messageDisappearStyles')) {
+            const style = document.createElement('style');
+            style.id = 'messageDisappearStyles';
+            style.textContent = `
+                @keyframes messageDisappear {
+                    0% { 
+                        opacity: 1;
+                        transform: translate(-50%, -50%) scale(1);
+                    }
+                    100% { 
+                        opacity: 0;
+                        transform: translate(-50%, -50%) scale(0.8);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 
     highlightExchangeHint(canAfford) {
@@ -257,24 +337,39 @@ class UIManager {
         clearedLines.forEach(lineY => {
             if (this.fieldCells[lineY]) {
                 this.fieldCells[lineY].forEach(cell => {
-                    cell.style.animation = 'lineClear 0.5s ease-in-out';
-                    cell.style.background = '#ffd700';
+                    cell.style.animation = 'lineClear 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+                    cell.style.background = 'linear-gradient(90deg, #ffd700, #ff8c00)';
+                    cell.style.boxShadow = '0 0 20px rgba(255, 215, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.3)';
+                    cell.style.borderColor = 'rgba(255, 215, 0, 0.8)';
                 });
             }
         });
 
         setTimeout(() => {
             this.initializeGameField();
-        }, 500);
+        }, 800);
 
         if (!document.getElementById('lineClearStyles')) {
             const style = document.createElement('style');
             style.id = 'lineClearStyles';
             style.textContent = `
                 @keyframes lineClear {
-                    0% { transform: scaleX(1); opacity: 1; }
-                    50% { transform: scaleX(1.1); opacity: 0.8; }
-                    100% { transform: scaleX(0); opacity: 0; }
+                    0% { 
+                        transform: scaleX(1) scaleY(1); 
+                        opacity: 1;
+                    }
+                    25% { 
+                        transform: scaleX(1.05) scaleY(1.1); 
+                        opacity: 0.9;
+                    }
+                    75% { 
+                        transform: scaleX(1.02) scaleY(0.8); 
+                        opacity: 0.5;
+                    }
+                    100% { 
+                        transform: scaleX(0) scaleY(0.1); 
+                        opacity: 0;
+                    }
                 }
             `;
             document.head.appendChild(style);
@@ -282,25 +377,30 @@ class UIManager {
     }
 
     updateExchangeButtonState(canAfford, isFever) {
-        const hint = document.querySelector('.exchange-hint span');
-        if (hint) {
+        const hintKey = document.querySelector('.hint-key');
+        const hintText = document.querySelector('.hint-text');
+        
+        if (hintKey && hintText) {
             if (isFever) {
-                hint.textContent = 'E: 交換 (FREE!)';
-                hint.style.color = '#ffd700';
-                hint.style.fontWeight = 'bold';
+                hintText.textContent = '交換 (FREE!)';
+                hintKey.style.color = 'var(--gold-gradient)';
+                hintText.style.color = '#ffd700';
+                hintKey.style.boxShadow = '0 0 10px rgba(255, 215, 0, 0.5)';
             } else if (canAfford) {
-                hint.textContent = 'E: 交換 (-30P)';
-                hint.style.color = '#00ff88';
-                hint.style.fontWeight = 'normal';
+                hintText.textContent = '交換 (-30P)';
+                hintKey.style.color = 'var(--accent-green)';
+                hintText.style.color = 'var(--text-secondary)';
+                hintKey.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
             } else {
-                hint.textContent = 'E: 交換 (-30P)';
-                hint.style.color = '#ff6b6b';
-                hint.style.fontWeight = 'normal';
+                hintText.textContent = '交換 (-30P)';
+                hintKey.style.color = 'var(--accent-red)';
+                hintText.style.color = 'var(--accent-red)';
+                hintKey.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.2)';
             }
         }
     }
 
-    addScreenShake(intensity = 5, duration = 300) {
+    addScreenShake(intensity = 8, duration = 400) {
         const gameContainer = document.querySelector('.game-container');
         if (!gameContainer) return;
 
@@ -312,10 +412,11 @@ class UIManager {
             const progress = elapsed / duration;
             
             if (progress < 1) {
-                const currentIntensity = intensity * (1 - progress);
+                const currentIntensity = intensity * (1 - progress) * Math.sin(progress * Math.PI * 10);
                 const x = (Math.random() - 0.5) * currentIntensity;
                 const y = (Math.random() - 0.5) * currentIntensity;
-                gameContainer.style.transform = `translate(${x}px, ${y}px)`;
+                const rotation = (Math.random() - 0.5) * currentIntensity * 0.5;
+                gameContainer.style.transform = `translate(${x}px, ${y}px) rotate(${rotation}deg)`;
                 requestAnimationFrame(shake);
             } else {
                 gameContainer.style.transform = originalTransform;

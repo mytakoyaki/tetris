@@ -10,9 +10,18 @@
     <!-- スタート画面 -->
     <div id="startScreen" class="screen">
         <div class="start-container">
-            <h1 class="game-title">ClaudeTetris</h1>
+            <div class="title-section">
+                <h1 class="game-title">ClaudeTetris</h1>
+                <div class="title-glow"></div>
+            </div>
             <p class="game-subtitle">ポイント&フィーバーで運を乗り越えよう！</p>
-            <button id="startButton" class="start-button">START GAME</button>
+            <div class="start-button-wrapper">
+                <button id="startButton" class="start-button">
+                    <span class="button-text">START GAME</span>
+                    <div class="button-shine"></div>
+                </button>
+            </div>
+            <div class="particles-container"></div>
         </div>
     </div>
 
@@ -21,15 +30,18 @@
         <div class="game-container">
             <!-- 左エリア -->
             <div class="left-area">
-                <div class="info-section">
-                    <h3>HOLD</h3>
-                    <div id="holdDisplay" class="block-display"></div>
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">HOLD</h3>
+                    <div id="holdDisplay" class="block-display premium-display"></div>
                 </div>
                 
-                <div class="info-section">
-                    <h3>FEVER GAUGE</h3>
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">FEVER GAUGE</h3>
                     <div class="fever-gauge-container">
-                        <div id="feverGauge" class="fever-gauge"></div>
+                        <div class="fever-gauge-background">
+                            <div id="feverGauge" class="fever-gauge"></div>
+                            <div class="fever-gauge-overlay"></div>
+                        </div>
                         <div id="feverCounter" class="fever-counter">0/30</div>
                     </div>
                 </div>
@@ -37,59 +49,91 @@
 
             <!-- 中央エリア -->
             <div class="center-area">
-                <div id="gameField" class="game-field"></div>
+                <div class="game-field-container">
+                    <div id="gameField" class="game-field premium-field"></div>
+                    <div class="field-border-glow"></div>
+                </div>
                 <div id="feverOverlay" class="fever-overlay hidden">
-                    <div class="fever-text">FEVER!</div>
-                    <div id="feverTimer" class="fever-timer">20</div>
+                    <div class="fever-animation-container">
+                        <div class="fever-text">FEVER!</div>
+                        <div class="fever-sparkles"></div>
+                    </div>
+                    <div id="feverTimer" class="fever-timer premium-timer">20</div>
                 </div>
             </div>
 
             <!-- 右エリア -->
             <div class="right-area">
-                <div class="info-section">
-                    <h3>SCORE</h3>
-                    <div id="scoreDisplay" class="score-display">0</div>
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">SCORE</h3>
+                    <div id="scoreDisplay" class="score-display premium-score">0</div>
                 </div>
                 
-                <div class="info-section">
-                    <h3>POINTS</h3>
-                    <div id="pointsDisplay" class="points-display">0</div>
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">POINTS</h3>
+                    <div id="pointsDisplay" class="points-display premium-points">0</div>
                 </div>
                 
-                <div class="info-section">
-                    <h3>NEXT</h3>
-                    <div id="nextDisplay" class="block-display"></div>
-                    <div class="exchange-hint">
-                        <span>E: 交換 (-30P)</span>
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">NEXT</h3>
+                    <div id="nextDisplay" class="block-display premium-display"></div>
+                    <div class="exchange-hint premium-hint">
+                        <span class="hint-key">E</span>
+                        <span class="hint-text">交換 (-30P)</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- 操作説明 -->
-        <div class="controls-info">
-            <div class="controls-row">
-                <span>←→: 移動</span>
-                <span>↑: 回転</span>
-                <span>↓: ソフトドロップ</span>
-                <span>Space: ハードドロップ</span>
-            </div>
-            <div class="controls-row">
-                <span>C: ホールド</span>
-                <span>E: ブロック交換</span>
+        <div class="controls-info glass-panel">
+            <div class="controls-title">Controls</div>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <span class="control-key">←→</span>
+                    <span class="control-desc">移動</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">↑</span>
+                    <span class="control-desc">回転</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">↓</span>
+                    <span class="control-desc">ソフトドロップ</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">Space</span>
+                    <span class="control-desc">ハードドロップ</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">C</span>
+                    <span class="control-desc">ホールド</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">E</span>
+                    <span class="control-desc">ブロック交換</span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ゲームオーバー画面 -->
     <div id="gameOverScreen" class="screen hidden">
-        <div class="gameover-container">
-            <h1 class="gameover-title">GAME OVER</h1>
-            <div class="final-score">
-                <h2>最終スコア</h2>
-                <div id="finalScore" class="final-score-value">0</div>
+        <div class="gameover-container glass-panel">
+            <div class="gameover-title-container">
+                <h1 class="gameover-title">GAME OVER</h1>
+                <div class="gameover-glow"></div>
             </div>
-            <button id="playAgainButton" class="play-again-button">PLAY AGAIN</button>
+            <div class="final-score-section">
+                <h2 class="final-score-label">最終スコア</h2>
+                <div id="finalScore" class="final-score-value premium-score">0</div>
+            </div>
+            <div class="play-again-wrapper">
+                <button id="playAgainButton" class="play-again-button premium-button">
+                    <span class="button-text">PLAY AGAIN</span>
+                    <div class="button-shine"></div>
+                </button>
+            </div>
         </div>
     </div>
 
