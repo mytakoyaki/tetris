@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClaudeTetris</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- スタート画面 -->
+    <div id="startScreen" class="screen">
+        <div class="start-container">
+            <h1 class="game-title">ClaudeTetris</h1>
+            <p class="game-subtitle">ポイント&フィーバーで運を乗り越えよう！</p>
+            <button id="startButton" class="start-button">START GAME</button>
+        </div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="gameScreen" class="screen hidden">
+        <div class="game-container">
+            <!-- 左エリア -->
+            <div class="left-area">
+                <div class="info-section">
+                    <h3>HOLD</h3>
+                    <div id="holdDisplay" class="block-display"></div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>FEVER GAUGE</h3>
+                    <div class="fever-gauge-container">
+                        <div id="feverGauge" class="fever-gauge"></div>
+                        <div id="feverCounter" class="fever-counter">0/30</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中央エリア -->
+            <div class="center-area">
+                <div id="gameField" class="game-field"></div>
+                <div id="feverOverlay" class="fever-overlay hidden">
+                    <div class="fever-text">FEVER!</div>
+                    <div id="feverTimer" class="fever-timer">20</div>
+                </div>
+            </div>
+
+            <!-- 右エリア -->
+            <div class="right-area">
+                <div class="info-section">
+                    <h3>SCORE</h3>
+                    <div id="scoreDisplay" class="score-display">0</div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>POINTS</h3>
+                    <div id="pointsDisplay" class="points-display">0</div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>NEXT</h3>
+                    <div id="nextDisplay" class="block-display"></div>
+                    <div class="exchange-hint">
+                        <span>E: 交換 (-30P)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作説明 -->
+        <div class="controls-info">
+            <div class="controls-row">
+                <span>←→: 移動</span>
+                <span>↑: 回転</span>
+                <span>↓: ソフトドロップ</span>
+                <span>Space: ハードドロップ</span>
+            </div>
+            <div class="controls-row">
+                <span>C: ホールド</span>
+                <span>E: ブロック交換</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="gameOverScreen" class="screen hidden">
+        <div class="gameover-container">
+            <h1 class="gameover-title">GAME OVER</h1>
+            <div class="final-score">
+                <h2>最終スコア</h2>
+                <div id="finalScore" class="final-score-value">0</div>
+            </div>
+            <button id="playAgainButton" class="play-again-button">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <!-- スコアポップアップ -->
+    <div id="scorePopup" class="score-popup hidden"></div>
+
+    <!-- JavaScript読み込み -->
+    <script src="js/tetrominos.js"></script>
+    <script src="js/gameField.js"></script>
+    <script src="js/pointSystem.js"></script>
+    <script src="js/feverMode.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
