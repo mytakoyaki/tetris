@@ -8,7 +8,16 @@ class UIManager {
             holdDisplay: document.getElementById('holdDisplay'),
             feverGauge: document.getElementById('feverGauge'),
             feverCounter: document.getElementById('feverCounter'),
-            finalScore: document.getElementById('finalScore')
+            finalScore: document.getElementById('finalScore'),
+            levelDisplay: document.getElementById('levelDisplay'),
+            levelProgress: document.getElementById('levelProgress'),
+            linesDisplay: document.getElementById('linesDisplay'),
+            comboDisplay: document.getElementById('comboDisplay'),
+            backToBackDisplay: document.getElementById('backToBackDisplay'),
+            totalLinesDisplay: document.getElementById('totalLinesDisplay'),
+            tetrisCountDisplay: document.getElementById('tetrisCountDisplay'),
+            tspinCountDisplay: document.getElementById('tspinCountDisplay'),
+            lastPointGain: document.getElementById('lastPointGain')
         };
         
         this.fieldCells = [];
@@ -149,6 +158,70 @@ class UIManager {
 
         if (this.elements.feverCounter) {
             this.elements.feverCounter.textContent = `${progress.current}/${progress.needed}`;
+        }
+    }
+    
+    updateLevel(level) {
+        if (this.elements.levelDisplay) {
+            this.elements.levelDisplay.textContent = level;
+        }
+    }
+    
+    updateLevelProgress(progress) {
+        if (this.elements.levelProgress) {
+            const percentage = Math.min(progress.percentage, 100);
+            this.elements.levelProgress.style.setProperty('--level-progress', percentage + '%');
+        }
+        
+        if (this.elements.linesDisplay) {
+            this.elements.linesDisplay.textContent = `${progress.current}/10`;
+        }
+    }
+    
+    updateStats(stats) {
+        if (this.elements.totalLinesDisplay) {
+            this.elements.totalLinesDisplay.textContent = stats.totalLines;
+        }
+        
+        if (this.elements.tetrisCountDisplay) {
+            this.elements.tetrisCountDisplay.textContent = stats.tetrisCount;
+        }
+        
+        if (this.elements.tspinCountDisplay) {
+            this.elements.tspinCountDisplay.textContent = stats.tspinCount;
+        }
+        
+        // Update combo display
+        if (this.elements.comboDisplay) {
+            if (stats.comboCount > 1) {
+                this.elements.comboDisplay.textContent = `COMBO x${stats.comboCount}`;
+                this.elements.comboDisplay.classList.remove('hidden');
+            } else {
+                this.elements.comboDisplay.classList.add('hidden');
+            }
+        }
+        
+        // Update back-to-back display
+        if (this.elements.backToBackDisplay) {
+            if (stats.backToBackActive) {
+                this.elements.backToBackDisplay.classList.remove('hidden');
+            } else {
+                this.elements.backToBackDisplay.classList.add('hidden');
+            }
+        }
+    }
+    
+    showLastPointGain(points, description = '') {
+        if (this.elements.lastPointGain) {
+            this.elements.lastPointGain.textContent = `+${points}P ${description}`;
+            this.elements.lastPointGain.classList.remove('show');
+            this.elements.lastPointGain.classList.add('show');
+            
+            setTimeout(() => {
+                if (this.elements.lastPointGain) {
+                    this.elements.lastPointGain.classList.remove('show');
+                }
+            }, 2000);
         }
     }
 
@@ -430,6 +503,15 @@ class UIManager {
         this.updateScore(0);
         this.updatePoints(0);
         this.updateFeverGauge({ current: 0, needed: 30, percentage: 0 });
+        this.updateLevel(1);
+        this.updateLevelProgress({ current: 0, needed: 10, percentage: 0 });
+        this.updateStats({
+            totalLines: 0,
+            tetrisCount: 0,
+            tspinCount: 0,
+            comboCount: 0,
+            backToBackActive: false
+        });
         this.updateNextDisplay(null);
         this.updateHoldDisplay(null);
         this.initializeGameField();

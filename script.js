@@ -59,6 +59,17 @@ class TetrisGame {
             const progress = this.pointSystem.getFeverProgress();
             this.ui.updateFeverGauge(progress);
         });
+        
+        this.pointSystem.setCallback('onLevelChange', (level) => {
+            this.ui.updateLevel(level);
+            this.gameField.setDropSpeed(this.pointSystem.getDropSpeed());
+        });
+        
+        this.pointSystem.setCallback('onStatsChange', (stats) => {
+            this.ui.updateStats(stats);
+            const levelProgress = this.pointSystem.getLevelProgress();
+            this.ui.updateLevelProgress(levelProgress);
+        });
 
         this.feverMode.setCallback('onStart', () => {
             this.pointSystem.setScoreMultiplier(FEVER_CONFIG.SCORE_MULTIPLIER);
@@ -80,6 +91,9 @@ class TetrisGame {
         this.pointSystem.reset();
         this.feverMode.reset();
         this.ui.reset();
+        
+        // Set initial drop speed
+        this.gameField.setDropSpeed(this.pointSystem.getDropSpeed());
         
         this.gameField.spawnTetromino();
         this.updateUI();
@@ -132,6 +146,7 @@ class TetrisGame {
         const lockResult = this.gameField.update(deltaTime);
         
         if (lockResult) {
+            // For auto-lock, ensure we get the soft drop distance
             this.handleTetrominoLocked(lockResult);
         }
 
@@ -147,9 +162,21 @@ class TetrisGame {
         this.ui.updateHoldDisplay(this.gameField.holdTetromino);
         this.ui.updateScore(this.pointSystem.score);
         this.ui.updatePoints(this.pointSystem.points);
+        this.ui.updateLevel(this.pointSystem.level);
         
         const progress = this.pointSystem.getFeverProgress();
         this.ui.updateFeverGauge(progress);
+        
+        const levelProgress = this.pointSystem.getLevelProgress();
+        this.ui.updateLevelProgress(levelProgress);
+        
+        this.ui.updateStats({
+            totalLines: this.pointSystem.totalLines,
+            tetrisCount: this.pointSystem.tetrisCount,
+            tspinCount: this.pointSystem.tspinCount,
+            comboCount: this.pointSystem.comboCount,
+            backToBackActive: this.pointSystem.isBackToBackActive
+        });
         
         this.ui.updateExchangeButtonState(
             this.pointSystem.canExchangeNext(), 
@@ -158,13 +185,17 @@ class TetrisGame {
     }
 
     handleTetrominoLocked(lockResult) {
-        const { linesCleared, blocksPlaced } = lockResult;
+        const { linesCleared, blocksPlaced, softDropDistance, hardDropDistance, isHardDrop, isTSpin, isAllClear } = lockResult;
 
-        this.pointSystem.onTetrominoPlaced();
+        // Add points for placing tetromino with drop bonuses
+        this.pointSystem.onTetrominoPlaced(softDropDistance, hardDropDistance, isHardDrop);
 
         if (linesCleared > 0) {
-            const score = this.pointSystem.onLinesCleared(linesCleared);
+            const score = this.pointSystem.onLinesCleared(linesCleared, 'normal', isTSpin, isAllClear);
             this.ui.addScreenShake(8, 200);
+        } else {
+            // Reset combo if no lines cleared
+            this.pointSystem.onLinesCleared(0);
         }
 
         if (this.pointSystem.shouldTriggerFever()) {
@@ -233,7 +264,7 @@ class TetrisGame {
                 break;
                 
             case 'ArrowDown':
-                moved = this.gameField.moveTetrominoDown();
+                moved = this.gameField.moveTetrominoDown(true); // true indicates manual soft drop
                 break;
                 
             case 'ArrowUp':
@@ -243,7 +274,9 @@ class TetrisGame {
             case 'Space':
                 const dropDistance = this.gameField.hardDrop();
                 if (dropDistance > 0) {
-                    this.handleTetrominoLocked(this.gameField.lockTetromino());
+                    const lockResult = this.gameField.lockTetromino();
+                    lockResult.isHardDrop = true;
+                    this.handleTetrominoLocked(lockResult);
                 }
                 moved = true;
                 break;

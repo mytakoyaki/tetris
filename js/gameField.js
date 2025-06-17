@@ -13,6 +13,8 @@ class GameField {
         this.lockDelay = 500;
         this.lockTimer = 0;
         this.isLocking = false;
+        this.softDropDistance = 0;
+        this.hardDropDistance = 0;
     }
 
     createEmptyField() {
@@ -29,6 +31,8 @@ class GameField {
         this.canHold = true;
         this.isLocking = false;
         this.lockTimer = 0;
+        this.softDropDistance = 0;
+        this.hardDropDistance = 0;
 
         if (this.isColliding(this.currentTetromino)) {
             return false;
@@ -105,11 +109,14 @@ class GameField {
         return false;
     }
 
-    moveTetrominoDown(force = false) {
+    moveTetrominoDown(isManualSoftDrop = false) {
         if (!this.currentTetromino) return false;
 
         if (this.canMove(this.currentTetromino, 0, 1)) {
             this.currentTetromino.moveDown();
+            if (isManualSoftDrop) {
+                this.softDropDistance++;
+            }
             this.resetLockTimer();
             return true;
         } else {
@@ -142,7 +149,7 @@ class GameField {
             dropDistance++;
         }
         
-        this.lockTetromino();
+        this.hardDropDistance = dropDistance;
         return dropDistance;
     }
 
@@ -163,15 +170,30 @@ class GameField {
         }
 
         this.canHold = false;
+        this.softDropDistance = 0;
+        this.hardDropDistance = 0;
         this.resetLockTimer();
         return true;
     }
 
     lockTetromino() {
-        if (!this.currentTetromino) return { linesCleared: 0, blocksPlaced: 0 };
+        if (!this.currentTetromino) return { 
+            linesCleared: 0, 
+            blocksPlaced: 0, 
+            softDropDistance: 0,
+            hardDropDistance: 0,
+            isHardDrop: false,
+            isTSpin: false,
+            isAllClear: false
+        };
 
         const blocks = this.currentTetromino.getBlocks();
         let blocksPlaced = 0;
+        const currentSoftDropDistance = this.softDropDistance;
+        const currentHardDropDistance = this.hardDropDistance;
+        
+        // Check for T-Spin before placing the piece
+        const isTSpin = this.detectTSpin();
 
         for (const block of blocks) {
             if (block.y >= 0 && block.y < FIELD_HEIGHT && 
@@ -188,10 +210,23 @@ class GameField {
         this.currentTetromino = null;
         this.isLocking = false;
         this.lockTimer = 0;
+        this.softDropDistance = 0;
+        this.hardDropDistance = 0;
 
         const linesCleared = this.clearLines();
         
-        return { linesCleared, blocksPlaced };
+        // Check for All Clear (Perfect Clear)
+        const isAllClear = this.isFieldEmpty();
+        
+        return { 
+            linesCleared, 
+            blocksPlaced,
+            softDropDistance: currentSoftDropDistance,
+            hardDropDistance: currentHardDropDistance,
+            isHardDrop: false, // This will be set by the caller for hard drops
+            isTSpin,
+            isAllClear
+        };
     }
 
     clearLines() {
@@ -223,7 +258,7 @@ class GameField {
 
         if (this.dropTimer >= this.dropInterval) {
             this.dropTimer = 0;
-            this.moveTetrominoDown();
+            this.moveTetrominoDown(false); // false = not manual soft drop
         }
 
         if (this.isLocking) {
@@ -277,11 +312,57 @@ class GameField {
         this.dropTimer = 0;
         this.lockTimer = 0;
         this.isLocking = false;
+        this.softDropDistance = 0;
+        this.hardDropDistance = 0;
     }
 
-    setDropSpeed(level) {
-        const baseSpeed = 1000;
-        const speedIncrease = Math.min(level * 50, 800);
-        this.dropInterval = Math.max(baseSpeed - speedIncrease, 100);
+    setDropSpeed(speed) {
+        this.dropInterval = speed;
+    }
+    
+    detectTSpin() {
+        if (!this.currentTetromino || this.currentTetromino.type !== 'T') {
+            return false;
+        }
+        
+        // Simple T-Spin detection: check if T piece is in a corner configuration
+        const blocks = this.currentTetromino.getBlocks();
+        const centerBlock = blocks.find(block => 
+            block.x === this.currentTetromino.x && 
+            block.y === this.currentTetromino.y
+        );
+        
+        if (!centerBlock) return false;
+        
+        // Check corners around the T center
+        const corners = [
+            { x: centerBlock.x - 1, y: centerBlock.y - 1 },
+            { x: centerBlock.x + 1, y: centerBlock.y - 1 },
+            { x: centerBlock.x - 1, y: centerBlock.y + 1 },
+            { x: centerBlock.x + 1, y: centerBlock.y + 1 }
+        ];
+        
+        let filledCorners = 0;
+        for (const corner of corners) {
+            if (corner.x < 0 || corner.x >= FIELD_WIDTH || 
+                corner.y < 0 || corner.y >= FIELD_HEIGHT ||
+                (corner.y >= 0 && this.field[corner.y][corner.x] !== null)) {
+                filledCorners++;
+            }
+        }
+        
+        // T-Spin if at least 3 corners are filled
+        return filledCorners >= 3;
+    }
+    
+    isFieldEmpty() {
+        for (let y = 0; y < FIELD_HEIGHT; y++) {
+            for (let x = 0; x < FIELD_WIDTH; x++) {
+                if (this.field[y][x] !== null) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

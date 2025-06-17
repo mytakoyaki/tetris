@@ -1,6 +1,9 @@
 const POINT_VALUES = {
     TETROMINO_PLACED: 10,
     EXCHANGE_COST: 30,
+    SOFT_DROP_BONUS: 0.5,
+    HARD_DROP_BONUS: 1,
+    TECHNICAL_BONUS: 50,
     LINE_CLEAR: {
         1: 100,
         2: 300,
@@ -22,10 +25,21 @@ class PointSystem {
         this.blocksPlaced = 0;
         this.totalBlocksPlaced = 0;
         this.scoreMultiplier = 1;
+        this.level = 1;
+        this.linesCleared = 0;
+        this.totalLines = 0;
+        this.tetrisCount = 0;
+        this.tspinCount = 0;
+        this.comboCount = 0;
+        this.backToBackCount = 0;
+        this.isBackToBackActive = false;
+        this.lastClearWasSpecial = false;
         this.callbacks = {
             onPointsChange: null,
             onScoreChange: null,
-            onBlocksPlacedChange: null
+            onBlocksPlacedChange: null,
+            onLevelChange: null,
+            onStatsChange: null
         };
     }
 
@@ -83,12 +97,43 @@ class PointSystem {
         }, 1000);
     }
 
-    onTetrominoPlaced() {
+    onTetrominoPlaced(softDropDistance = 0, hardDropDistance = 0, isHardDrop = false) {
         this.blocksPlaced += 1;
         this.totalBlocksPlaced += 1;
         
-        const pointsEarned = POINT_VALUES.TETROMINO_PLACED;
+        let pointsEarned = POINT_VALUES.TETROMINO_PLACED;
+        let bonusDetails = [];
+        
+        // Soft drop bonus (only for manual soft drops)
+        if (softDropDistance > 0) {
+            const softDropBonus = Math.floor(softDropDistance * POINT_VALUES.SOFT_DROP_BONUS);
+            if (softDropBonus > 0) {
+                pointsEarned += softDropBonus;
+                bonusDetails.push({
+                    type: 'Soft Drop',
+                    amount: softDropBonus,
+                    description: `${softDropDistance} lines`
+                });
+            }
+        }
+        
+        // Hard drop bonus
+        if (hardDropDistance > 0 && isHardDrop) {
+            const hardDropBonus = hardDropDistance * POINT_VALUES.HARD_DROP_BONUS;
+            pointsEarned += hardDropBonus;
+            bonusDetails.push({
+                type: 'Hard Drop',
+                amount: hardDropBonus,
+                description: `${hardDropDistance} lines`
+            });
+        }
+        
         this.addPoints(pointsEarned);
+        
+        // Show point bonus if there were any bonuses
+        if (bonusDetails.length > 0) {
+            this.showPointBonus(pointsEarned, bonusDetails);
+        }
 
         if (this.callbacks.onBlocksPlacedChange) {
             this.callbacks.onBlocksPlacedChange(this.blocksPlaced, this.totalBlocksPlaced);
@@ -97,13 +142,100 @@ class PointSystem {
         return pointsEarned;
     }
 
-    onLinesCleared(lineCount) {
-        if (lineCount === 0) return 0;
-
-        const baseScore = POINT_VALUES.LINE_CLEAR[lineCount] || 0;
-        this.addScore(baseScore, true, this.getGameFieldCenter());
-
-        return baseScore;
+    onLinesCleared(lineCount, clearType = 'normal', isTSpin = false, isAllClear = false) {
+        // Reset combo if no lines cleared
+        if (lineCount === 0) {
+            this.comboCount = 0;
+            return 0;
+        }
+        
+        let baseScore = POINT_VALUES.LINE_CLEAR[lineCount] || 0;
+        let bonusMultiplier = 1;
+        let bonusDetails = [];
+        let pointsGained = 0;
+        
+        // Update line statistics
+        this.linesCleared += lineCount;
+        this.totalLines += lineCount;
+        
+        // Check for level up
+        const newLevel = Math.floor(this.totalLines / 10) + 1;
+        if (newLevel > this.level) {
+            this.level = newLevel;
+            if (this.callbacks.onLevelChange) {
+                this.callbacks.onLevelChange(this.level);
+            }
+        }
+        
+        // Tetris count
+        if (lineCount === 4) {
+            this.tetrisCount++;
+        }
+        
+        // T-Spin handling
+        if (isTSpin) {
+            this.tspinCount++;
+            baseScore *= 2;
+            bonusDetails.push({ type: 'T-Spin', multiplier: 2 });
+            pointsGained += POINT_VALUES.TECHNICAL_BONUS;
+            this.lastClearWasSpecial = true;
+        } else if (lineCount === 4) {
+            this.lastClearWasSpecial = true;
+        } else {
+            this.lastClearWasSpecial = false;
+        }
+        
+        // Back-to-Back bonus
+        if (this.lastClearWasSpecial && this.isBackToBackActive) {
+            this.backToBackCount++;
+            bonusMultiplier *= 1.5;
+            bonusDetails.push({ type: 'Back-to-Back', multiplier: 1.5 });
+        }
+        
+        this.isBackToBackActive = this.lastClearWasSpecial;
+        
+        // Combo bonus
+        this.comboCount++;
+        if (this.comboCount > 1) {
+            const comboBonus = Math.min(this.comboCount * 0.1, 1.0);
+            bonusMultiplier *= (1 + comboBonus);
+            bonusDetails.push({ type: 'Combo', count: this.comboCount, multiplier: 1 + comboBonus });
+        }
+        
+        // All Clear bonus
+        if (isAllClear) {
+            bonusMultiplier *= 3;
+            bonusDetails.push({ type: 'Perfect Clear', multiplier: 3 });
+            pointsGained += POINT_VALUES.TECHNICAL_BONUS * 2;
+        }
+        
+        // Calculate final score
+        const finalScore = Math.floor(baseScore * bonusMultiplier * this.scoreMultiplier);
+        this.addScore(finalScore, true, this.getGameFieldCenter());
+        
+        // Add technical bonus points
+        if (pointsGained > 0) {
+            this.addPoints(pointsGained);
+            this.showPointBonus(pointsGained, [{ type: 'Technical Bonus', amount: pointsGained }]);
+        }
+        
+        // Show technical bonus display
+        if (bonusDetails.length > 0) {
+            this.showTechnicalBonus(bonusDetails, finalScore);
+        }
+        
+        // Update stats callback
+        if (this.callbacks.onStatsChange) {
+            this.callbacks.onStatsChange({
+                totalLines: this.totalLines,
+                tetrisCount: this.tetrisCount,
+                tspinCount: this.tspinCount,
+                comboCount: this.comboCount,
+                backToBackActive: this.isBackToBackActive
+            });
+        }
+        
+        return finalScore;
     }
 
     getGameFieldCenter() {
@@ -148,6 +280,80 @@ class PointSystem {
             percentage: (this.blocksPlaced / FEVER_CONFIG.BLOCKS_NEEDED) * 100
         };
     }
+    
+    getLevelProgress() {
+        const currentLevelLines = this.totalLines % 10;
+        const percentage = (currentLevelLines / 10) * 100;
+        
+        return {
+            current: currentLevelLines,
+            needed: 10,
+            percentage
+        };
+    }
+    
+    getDropSpeed() {
+        const baseSpeed = 1000;
+        const speedReduction = Math.min(this.level - 1, 15) * 50;
+        return Math.max(baseSpeed - speedReduction, 100);
+    }
+    
+    showTechnicalBonus(bonusDetails, finalScore) {
+        const bonusDisplay = document.getElementById('technicalBonus');
+        if (!bonusDisplay) return;
+        
+        let bonusText = '';
+        bonusDetails.forEach((bonus, index) => {
+            if (index > 0) bonusText += ' + ';
+            
+            switch (bonus.type) {
+                case 'T-Spin':
+                    bonusText += 'T-SPIN!';
+                    break;
+                case 'Back-to-Back':
+                    bonusText += 'BACK-TO-BACK!';
+                    break;
+                case 'Combo':
+                    bonusText += `COMBO x${bonus.count}`;
+                    break;
+                case 'Perfect Clear':
+                    bonusText += 'PERFECT CLEAR!';
+                    break;
+            }
+        });
+        
+        bonusText += ` (+${finalScore.toLocaleString()})`;
+        
+        bonusDisplay.textContent = bonusText;
+        bonusDisplay.classList.remove('hidden');
+        bonusDisplay.style.left = '50%';
+        bonusDisplay.style.top = '40%';
+        bonusDisplay.style.transform = 'translate(-50%, -50%)';
+        
+        setTimeout(() => {
+            bonusDisplay.classList.add('hidden');
+        }, 2500);
+    }
+    
+    showPointBonus(points, bonusDetails) {
+        const pointDisplay = document.getElementById('pointBonus');
+        if (!pointDisplay) return;
+        
+        let bonusText = `+${points}P`;
+        if (bonusDetails.length > 0) {
+            bonusText += ` (${bonusDetails[0].description || bonusDetails[0].type})`;
+        }
+        
+        pointDisplay.textContent = bonusText;
+        pointDisplay.classList.remove('hidden');
+        pointDisplay.style.left = '75%';
+        pointDisplay.style.top = '30%';
+        pointDisplay.style.transform = 'translate(-50%, -50%)';
+        
+        setTimeout(() => {
+            pointDisplay.classList.add('hidden');
+        }, 1800);
+    }
 
     shouldTriggerFever() {
         return this.blocksPlaced >= FEVER_CONFIG.BLOCKS_NEEDED;
@@ -183,6 +389,15 @@ class PointSystem {
         this.blocksPlaced = 0;
         this.totalBlocksPlaced = 0;
         this.scoreMultiplier = 1;
+        this.level = 1;
+        this.linesCleared = 0;
+        this.totalLines = 0;
+        this.tetrisCount = 0;
+        this.tspinCount = 0;
+        this.comboCount = 0;
+        this.backToBackCount = 0;
+        this.isBackToBackActive = false;
+        this.lastClearWasSpecial = false;
         
         if (this.callbacks.onPointsChange) {
             this.callbacks.onPointsChange(this.points);
@@ -192,6 +407,18 @@ class PointSystem {
         }
         if (this.callbacks.onBlocksPlacedChange) {
             this.callbacks.onBlocksPlacedChange(this.blocksPlaced, this.totalBlocksPlaced);
+        }
+        if (this.callbacks.onLevelChange) {
+            this.callbacks.onLevelChange(this.level);
+        }
+        if (this.callbacks.onStatsChange) {
+            this.callbacks.onStatsChange({
+                totalLines: this.totalLines,
+                tetrisCount: this.tetrisCount,
+                tspinCount: this.tspinCount,
+                comboCount: this.comboCount,
+                backToBackActive: this.isBackToBackActive
+            });
         }
     }
 
