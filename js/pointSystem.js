@@ -13,9 +13,9 @@ const POINT_VALUES = {
 };
 
 const FEVER_CONFIG = {
-    BLOCKS_NEEDED: 30,
-    DURATION: 20000,
-    SCORE_MULTIPLIER: 2
+    BLOCKS_NEEDED: 25,
+    DURATION: 25000,
+    SCORE_MULTIPLIER: 3
 };
 
 class PointSystem {
@@ -66,16 +66,27 @@ class PointSystem {
     }
 
     addScore(amount, showPopup = false, position = null) {
-        const finalAmount = Math.floor(amount * this.scoreMultiplier);
+        // レベルボーナス適用
+        const levelMultiplier = this.getLevelMultiplier();
+        const finalAmount = Math.floor(amount * this.scoreMultiplier * levelMultiplier);
         this.score += finalAmount;
         
         if (this.callbacks.onScoreChange) {
-            this.callbacks.onScoreChange(this.score, finalAmount, this.scoreMultiplier > 1);
+            this.callbacks.onScoreChange(this.score, finalAmount, this.scoreMultiplier > 1 || levelMultiplier > 1);
         }
 
         if (showPopup && position) {
-            this.showScorePopup(finalAmount, position, this.scoreMultiplier > 1);
+            this.showScorePopup(finalAmount, position, this.scoreMultiplier > 1 || levelMultiplier > 1);
         }
+    }
+
+    getLevelMultiplier() {
+        if (this.level >= 25) return 3.0;
+        if (this.level >= 20) return 2.5;
+        if (this.level >= 15) return 2.0;
+        if (this.level >= 10) return 1.5;
+        if (this.level >= 5) return 1.2;
+        return 1.0;
     }
 
     showScorePopup(amount, position, isBonus = false) {
@@ -146,6 +157,7 @@ class PointSystem {
         // Reset combo if no lines cleared
         if (lineCount === 0) {
             this.comboCount = 0;
+            this.lastClearWasSpecial = false;
             return 0;
         }
         
@@ -153,6 +165,39 @@ class PointSystem {
         let bonusMultiplier = 1;
         let bonusDetails = [];
         let pointsGained = 0;
+        
+        // T-Spin ボーナス
+        if (isTSpin) {
+            let tspinBonus = 0;
+            if (lineCount === 1) tspinBonus = 2000;      // T-Spin Single
+            else if (lineCount === 2) tspinBonus = 6000; // T-Spin Double
+            else if (lineCount === 3) tspinBonus = 12000; // T-Spin Triple
+            
+            baseScore += tspinBonus;
+            this.tspinCount++;
+            bonusDetails.push({ type: 'T-Spin', amount: tspinBonus });
+        }
+        
+        // パーフェクトクリア
+        if (isAllClear) {
+            const perfectClearBonus = 25000;
+            baseScore += perfectClearBonus;
+            bonusDetails.push({ type: 'Perfect Clear', amount: perfectClearBonus });
+        }
+        
+        // Back-to-Back判定
+        const isSpecialClear = lineCount === 4 || isTSpin;
+        if (isSpecialClear && this.lastClearWasSpecial) {
+            bonusMultiplier = 2.0;
+            this.backToBackCount++;
+            this.isBackToBackActive = true;
+            bonusDetails.push({ type: 'Back-to-Back', multiplier: bonusMultiplier });
+        } else {
+            this.isBackToBackActive = false;
+            this.backToBackCount = 0;
+        }
+        
+        this.lastClearWasSpecial = isSpecialClear;
         
         // Update line statistics
         this.linesCleared += lineCount;

@@ -2,7 +2,7 @@ class FeverMode {
     constructor() {
         this.isActive = false;
         this.timeRemaining = 0;
-        this.duration = 20000;
+        this.duration = 25000;
         this.updateTimer = null;
         this.callbacks = {
             onStart: null,

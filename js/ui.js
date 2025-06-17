@@ -243,6 +243,109 @@ class UIManager {
         }
     }
 
+    updateGameOverScreen(gameData) {
+        document.getElementById('finalScore').textContent = gameData.score.toLocaleString();
+        document.getElementById('finalLevel').textContent = gameData.level;
+        document.getElementById('finalLines').textContent = gameData.totalLines;
+        document.getElementById('finalTetris').textContent = gameData.tetrisCount;
+        document.getElementById('finalTSpin').textContent = gameData.tspinCount;
+        
+        const danElement = document.getElementById('finalDan');
+        danElement.textContent = gameData.currentDan.name;
+        danElement.style.color = gameData.currentDan.color;
+        
+        // 新記録バッジ
+        const newRecordBadge = document.getElementById('newRecordBadge');
+        if (gameData.isNewRecord) {
+            newRecordBadge.classList.remove('hidden');
+        } else {
+            newRecordBadge.classList.add('hidden');
+        }
+        
+        // 段位昇格表示
+        const danPromotion = document.getElementById('danPromotion');
+        const promotionDan = document.getElementById('promotionDan');
+        if (gameData.hasPromoted) {
+            promotionDan.textContent = gameData.promotedDan.name;
+            promotionDan.style.color = gameData.promotedDan.color;
+            danPromotion.classList.remove('hidden');
+        } else {
+            danPromotion.classList.add('hidden');
+        }
+    }
+
+    updateDanDisplay(dan) {
+        const danElement = document.getElementById('danDisplay');
+        danElement.textContent = dan.name;
+        danElement.style.color = dan.color;
+        document.documentElement.style.setProperty('--dan-color', dan.color);
+    }
+
+    updateRankingScreen(scoreManager) {
+        const rankingList = document.getElementById('rankingList');
+        const highScores = scoreManager.getHighScores(10);
+        
+        rankingList.innerHTML = '';
+        
+        if (highScores.length === 0) {
+            rankingList.innerHTML = '<div class="no-scores">記録がありません</div>';
+            this.updateOverallStats(scoreManager);
+            return;
+        }
+        
+        highScores.forEach((score, index) => {
+            const rankingItem = document.createElement('div');
+            rankingItem.className = 'ranking-item';
+            
+            const rank = index + 1;
+            const isTop3 = rank <= 3;
+            
+            rankingItem.innerHTML = `
+                <div class="ranking-rank ${isTop3 ? 'top3' : ''}">${rank}</div>
+                <div class="ranking-score">${score.score.toLocaleString()}</div>
+                <div class="ranking-dan" style="color: ${score.dan.color}">${score.dan.name}</div>
+                <div class="ranking-level">Lv.${score.level}</div>
+                <div class="ranking-date">${scoreManager.formatDateTime(score.timestamp)}</div>
+            `;
+            
+            rankingList.appendChild(rankingItem);
+        });
+        
+        this.updateOverallStats(scoreManager);
+    }
+
+    updateOverallStats(scoreManager) {
+        const overallStats = document.getElementById('overallStats');
+        const stats = scoreManager.getStatistics();
+        
+        overallStats.innerHTML = `
+            <div class="overall-stat-item">
+                <span class="overall-stat-label">総ゲーム数</span>
+                <span class="overall-stat-value">${stats.totalGames}</span>
+            </div>
+            <div class="overall-stat-item">
+                <span class="overall-stat-label">平均スコア</span>
+                <span class="overall-stat-value">${stats.averageScore.toLocaleString()}</span>
+            </div>
+            <div class="overall-stat-item">
+                <span class="overall-stat-label">総ライン数</span>
+                <span class="overall-stat-value">${stats.totalLines}</span>
+            </div>
+            <div class="overall-stat-item">
+                <span class="overall-stat-label">総テトリス数</span>
+                <span class="overall-stat-value">${stats.totalTetris}</span>
+            </div>
+            <div class="overall-stat-item">
+                <span class="overall-stat-label">総T-Spin数</span>
+                <span class="overall-stat-value">${stats.totalTSpin}</span>
+            </div>
+            <div class="overall-stat-item">
+                <span class="overall-stat-label">最高段位</span>
+                <span class="overall-stat-value" style="color: ${stats.bestDan.color}">${stats.bestDan.name}</span>
+            </div>
+        `;
+    }
+
     showScoreAnimation(amount, position, isBonus = false) {
         const popup = document.createElement('div');
         popup.className = 'floating-score';

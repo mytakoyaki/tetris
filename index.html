@@ -20,6 +20,10 @@
                     <span class="button-text">START GAME</span>
                     <div class="button-shine"></div>
                 </button>
+                <button id="rankingButton" class="ranking-button">
+                    <span class="button-text">RANKING</span>
+                    <div class="button-shine"></div>
+                </button>
             </div>
             <div class="particles-container"></div>
         </div>
@@ -44,6 +48,10 @@
                         </div>
                         <div id="linesDisplay" class="lines-counter">0/10</div>
                     </div>
+                    <div class="dan-display-container">
+                        <div class="dan-label">段位</div>
+                        <div id="danDisplay" class="dan-display">無段</div>
+                    </div>
                 </div>
                 
                 <div class="info-section glass-panel">
@@ -53,7 +61,7 @@
                             <div id="feverGauge" class="fever-gauge"></div>
                             <div class="fever-gauge-overlay"></div>
                         </div>
-                        <div id="feverCounter" class="fever-counter">0/30</div>
+                        <div id="feverCounter" class="fever-counter">0/25</div>
                     </div>
                 </div>
             </div>
@@ -69,7 +77,7 @@
                         <div class="fever-text">FEVER!</div>
                         <div class="fever-sparkles"></div>
                     </div>
-                    <div id="feverTimer" class="fever-timer premium-timer">20</div>
+                    <div id="feverTimer" class="fever-timer premium-timer">25</div>
                 </div>
             </div>
 
@@ -169,10 +177,41 @@
             <div class="final-score-section">
                 <h2 class="final-score-label">最終スコア</h2>
                 <div id="finalScore" class="final-score-value premium-score">0</div>
+                <div id="newRecordBadge" class="new-record-badge hidden">NEW RECORD!</div>
+                <div id="danPromotion" class="dan-promotion hidden">
+                    <div class="promotion-text">段位昇格！</div>
+                    <div id="promotionDan" class="promotion-dan"></div>
+                </div>
+            </div>
+            <div class="game-stats-section">
+                <div class="stats-row">
+                    <span class="stat-label">レベル:</span>
+                    <span id="finalLevel" class="stat-value">1</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">ライン:</span>
+                    <span id="finalLines" class="stat-value">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">テトリス:</span>
+                    <span id="finalTetris" class="stat-value">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">T-Spin:</span>
+                    <span id="finalTSpin" class="stat-value">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">段位:</span>
+                    <span id="finalDan" class="stat-value dan-text">無段</span>
+                </div>
             </div>
             <div class="play-again-wrapper">
                 <button id="playAgainButton" class="play-again-button premium-button">
                     <span class="button-text">PLAY AGAIN</span>
+                    <div class="button-shine"></div>
+                </button>
+                <button id="viewRankingButton" class="ranking-button">
+                    <span class="button-text">RANKING</span>
                     <div class="button-shine"></div>
                 </button>
             </div>
@@ -188,11 +227,32 @@
     <!-- ポイントボーナス表示 -->
     <div id="pointBonus" class="point-bonus hidden"></div>
 
+    <!-- ランキング画面 -->
+    <div id="rankingScreen" class="screen hidden">
+        <div class="ranking-container glass-panel">
+            <div class="ranking-header">
+                <h1 class="ranking-title">HIGH SCORE RANKING</h1>
+                <button id="closeRankingButton" class="close-button">×</button>
+            </div>
+            <div class="ranking-content">
+                <div id="rankingList" class="ranking-list"></div>
+                <div class="ranking-stats">
+                    <h3 class="stats-title">統計情報</h3>
+                    <div id="overallStats" class="overall-stats"></div>
+                </div>
+            </div>
+            <div class="ranking-footer">
+                <button id="clearScoresButton" class="clear-scores-button">記録をクリア</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript読み込み -->
     <script src="js/tetrominos.js"></script>
     <script src="js/gameField.js"></script>
     <script src="js/pointSystem.js"></script>
     <script src="js/feverMode.js"></script>
+    <script src="js/scoreManager.js"></script>
     <script src="js/ui.js"></script>
     <script src="script.js"></script>
 </body>

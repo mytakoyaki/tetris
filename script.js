@@ -4,10 +4,12 @@ class TetrisGame {
         this.pointSystem = new PointSystem();
         this.feverMode = new FeverMode();
         this.ui = new UIManager();
+        this.scoreManager = new ScoreManager();
         
         this.gameState = 'start';
         this.isRunning = false;
         this.lastTime = 0;
+        this.gameStartTime = 0;
         
         this.keys = {};
         this.keyRepeatTimers = {};
@@ -30,6 +32,22 @@ class TetrisGame {
 
         document.getElementById('playAgainButton').addEventListener('click', () => {
             this.startGame();
+        });
+
+        document.getElementById('rankingButton').addEventListener('click', () => {
+            this.showRanking();
+        });
+
+        document.getElementById('viewRankingButton').addEventListener('click', () => {
+            this.showRanking();
+        });
+
+        document.getElementById('closeRankingButton').addEventListener('click', () => {
+            this.hideRanking();
+        });
+
+        document.getElementById('clearScoresButton').addEventListener('click', () => {
+            this.clearAllScores();
         });
 
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
@@ -86,6 +104,7 @@ class TetrisGame {
     startGame() {
         this.gameState = 'playing';
         this.isRunning = true;
+        this.gameStartTime = Date.now();
         
         this.gameField.reset();
         this.pointSystem.reset();
@@ -117,9 +136,44 @@ class TetrisGame {
         this.gameState = 'gameOver';
         this.isRunning = false;
         
-        this.ui.updateFinalScore(this.pointSystem.score);
-        this.ui.showScreen('gameOverScreen');
+        const playTime = Date.now() - this.gameStartTime;
+        const gameData = {
+            score: this.pointSystem.score,
+            level: this.pointSystem.level,
+            totalLines: this.pointSystem.totalLines,
+            tetrisCount: this.pointSystem.tetrisCount,
+            tspinCount: this.pointSystem.tspinCount,
+            totalBlocksPlaced: this.pointSystem.totalBlocksPlaced,
+            playTime: playTime
+        };
+
+        // 現在の段位取得
+        const currentDan = this.scoreManager.getCurrentDan(this.pointSystem.score);
         
+        // スコア保存
+        const scoreRecord = this.scoreManager.saveScore(gameData);
+        
+        // 新記録判定
+        const isNewRecord = this.scoreManager.isNewRecord(this.pointSystem.score);
+        
+        // 段位昇格判定（過去の最高スコアと比較）
+        const previousBestScore = this.scoreManager.getHighScores(1)[1]?.score || 0;
+        const previousDan = this.scoreManager.getDanRank(previousBestScore);
+        const hasPromoted = currentDan.minScore > previousDan.minScore;
+        
+        this.ui.updateGameOverScreen({
+            score: this.pointSystem.score,
+            level: this.pointSystem.level,
+            totalLines: this.pointSystem.totalLines,
+            tetrisCount: this.pointSystem.tetrisCount,
+            tspinCount: this.pointSystem.tspinCount,
+            currentDan: currentDan,
+            isNewRecord: isNewRecord,
+            hasPromoted: hasPromoted,
+            promotedDan: hasPromoted ? currentDan : null
+        });
+        
+        this.ui.showScreen('gameOverScreen');
         this.feverMode.reset();
     }
 
@@ -182,6 +236,10 @@ class TetrisGame {
             this.pointSystem.canExchangeNext(), 
             this.feverMode.getIsActive()
         );
+        
+        // 段位表示更新
+        const currentDan = this.scoreManager.getCurrentDan(this.pointSystem.score);
+        this.ui.updateDanDisplay(currentDan);
     }
 
     handleTetrominoLocked(lockResult) {
@@ -313,7 +371,10 @@ class TetrisGame {
         }
 
         if (canExchange) {
-            const newType = Tetromino.getRandomType();
+            // 現在のブロックと異なるタイプを取得
+            const currentType = this.gameField.currentTetromino.type;
+            const newType = this.getRandomDifferentType(currentType);
+            
             this.gameField.currentTetromino = new Tetromino(newType, this.gameField.currentTetromino.x, this.gameField.currentTetromino.y);
             
             if (this.gameField.isColliding(this.gameField.currentTetromino)) {
@@ -326,6 +387,13 @@ class TetrisGame {
         } else {
             this.ui.showMessage('ポイント不足!', 1000, 'error-message');
         }
+    }
+
+    getRandomDifferentType(excludeType) {
+        const allTypes = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+        const availableTypes = allTypes.filter(type => type !== excludeType);
+        const randomIndex = Math.floor(Math.random() * availableTypes.length);
+        return availableTypes[randomIndex];
     }
 
     getCurrentGameState() {
@@ -342,6 +410,23 @@ class TetrisGame {
 
     setDropSpeed(level) {
         this.gameField.setDropSpeed(level);
+    }
+
+    showRanking() {
+        this.ui.updateRankingScreen(this.scoreManager);
+        this.ui.showScreen('rankingScreen');
+    }
+
+    hideRanking() {
+        const previousScreen = this.gameState === 'gameOver' ? 'gameOverScreen' : 'startScreen';
+        this.ui.showScreen(previousScreen);
+    }
+
+    clearAllScores() {
+        if (confirm('本当に全ての記録を削除しますか？この操作は取り消せません。')) {
+            this.scoreManager.clearAllScores();
+            this.ui.updateRankingScreen(this.scoreManager);
+        }
     }
 }
 
