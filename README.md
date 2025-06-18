@@ -2,6 +2,8 @@
 
 **PCユーザー専用の革新的テトリスゲーム**
 
+[![🎮 今すぐプレイ](https://img.shields.io/badge/🎮%20今すぐプレイ-ClaudeTetris-00ff88?style=for-the-badge&logo=github)](https://mytakoyaki.github.io/tetris/)
+
 従来のテトリスに「ポイント」と「フィーバーモード」を追加した、運要素を戦略で乗り越える新しいテトリス体験をお楽しみください。
 
 ## 🚀 はじめに
@@ -184,5 +186,16 @@ A: ブラウザのlocalStorageが有効になっているか確認してくだ�
 
 **ClaudeTetris**で新しいテトリス体験をお楽しみください！
 戦略的にポイントを貯めて、フィーバーモードで大量得点を狙いましょう！
+
+## 🌐 ライブデモ
+
+🎮 **[今すぐプレイ開始！](https://mytakoyaki.github.io/tetris/)** - GitHub Pagesで公開中
+
+### 推奨プレイ環境
+- **PC/デスクトップ推奨** (1200px以上の画面)
+- **キーボード必須** (タッチ操作非対応)
+- **モダンブラウザ** (Chrome, Firefox, Safari, Edge)
+
+---
 
 🎮 **今すぐプレイを始めて、永世名人を目指そう！**
