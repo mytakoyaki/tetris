@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClaudeTetris</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- スタート画面 -->
+    <div id="startScreen" class="screen">
+        <div class="start-container">
+            <div class="title-section">
+                <h1 class="game-title">ClaudeTetris</h1>
+                <div class="title-glow"></div>
+            </div>
+            <p class="game-subtitle">ポイント&フィーバーで運を乗り越えよう！</p>
+            <div class="start-button-wrapper">
+                <button id="startButton" class="start-button">
+                    <span class="button-text">START GAME</span>
+                    <div class="button-shine"></div>
+                </button>
+                <button id="rankingButton" class="ranking-button">
+                    <span class="button-text">RANKING</span>
+                    <div class="button-shine"></div>
+                </button>
+                <button id="achievementButton" class="achievement-button">
+                    <span class="button-text">ACHIEVEMENTS</span>
+                    <div class="button-shine"></div>
+                </button>
+            </div>
+            <div class="particles-container"></div>
+        </div>
+    </div>
+
+    <!-- ゲーム画面 -->
+    <div id="gameScreen" class="screen hidden">
+        <div class="game-container">
+            <!-- 左エリア -->
+            <div class="left-area">
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">HOLD</h3>
+                    <div id="holdDisplay" class="block-display premium-display"></div>
+                </div>
+                
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">LEVEL</h3>
+                    <div id="levelDisplay" class="level-display premium-level">1</div>
+                    <div class="level-progress-container">
+                        <div class="level-progress-bar">
+                            <div id="levelProgress" class="level-progress"></div>
+                        </div>
+                        <div id="linesDisplay" class="lines-counter">0s/30s</div>
+                    </div>
+                    <div class="dan-display-container">
+                        <div class="dan-label">段位</div>
+                        <div id="danDisplay" class="dan-display">無段</div>
+                    </div>
+                </div>
+                
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">FEVER GAUGE</h3>
+                    <div class="fever-gauge-container">
+                        <div class="fever-gauge-background">
+                            <div id="feverGauge" class="fever-gauge"></div>
+                            <div class="fever-gauge-overlay"></div>
+                        </div>
+                        <div id="feverCounter" class="fever-counter">0/20</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中央エリア -->
+            <div class="center-area">
+                <div class="game-field-container">
+                    <div id="gameField" class="game-field premium-field"></div>
+                    <div class="field-border-glow"></div>
+                </div>
+                <div id="feverOverlay" class="fever-overlay hidden">
+                    <div class="fever-animation-container">
+                        <div class="fever-text">FEVER!</div>
+                        <div class="fever-sparkles"></div>
+                    </div>
+                    <div id="feverTimer" class="fever-timer premium-timer">30</div>
+                </div>
+            </div>
+
+            <!-- 右エリア -->
+            <div class="right-area">
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">SCORE</h3>
+                    <div id="scoreDisplay" class="score-display premium-score">0</div>
+                    <div class="score-details">
+                        <div id="comboDisplay" class="combo-display hidden">COMBO x1</div>
+                        <div id="comboCounter" class="combo-counter hidden">0 COMBO</div>
+                        <div id="backToBackDisplay" class="back-to-back-display hidden">B2B</div>
+                    </div>
+                </div>
+                
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">POINTS</h3>
+                    <div id="pointsDisplay" class="points-display premium-points">0</div>
+                    <div class="points-details">
+                        <div id="lastPointGain" class="last-point-gain"></div>
+                    </div>
+                </div>
+                
+                <div class="info-section glass-panel">
+                    <h3 class="section-title">NEXT</h3>
+                    <div id="nextDisplay" class="block-display premium-display"></div>
+                    <div class="exchange-hint premium-hint">
+                        <span class="hint-key">E</span>
+                        <span class="hint-text">交換 (-30P)</span>
+                    </div>
+                </div>
+                
+                <div class="info-section glass-panel stats-panel">
+                    <h3 class="section-title">STATS</h3>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">LINES</span>
+                            <span id="totalLinesDisplay" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">TETRIS</span>
+                            <span id="tetrisCountDisplay" class="stat-value">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">T-SPIN</span>
+                            <span id="tspinCountDisplay" class="stat-value">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- レイアウト切り替えボタン -->
+        <div class="layout-controls">
+            <button id="orientationToggle" class="orientation-toggle-btn glass-panel" title="縦横レイアウト切り替え">
+                <span class="toggle-icon">⟲</span>
+                <span class="toggle-text">縦横切替</span>
+            </button>
+        </div>
+
+        <!-- 操作説明 -->
+        <div class="controls-info glass-panel">
+            <div class="controls-title">Controls</div>
+            <div class="controls-grid">
+                <div class="control-item">
+                    <span class="control-key">←→</span>
+                    <span class="control-desc">移動</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">↑</span>
+                    <span class="control-desc">回転</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">↓</span>
+                    <span class="control-desc">ソフトドロップ (+1P/行)</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">Space</span>
+                    <span class="control-desc">ハードドロップ (+2P/行)</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">C</span>
+                    <span class="control-desc">ホールド</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">E</span>
+                    <span class="control-desc">ブロック交換</span>
+                </div>
+            </div>
+            <div class="advanced-tips">
+                <div class="tip-title">上級者テクニック</div>
+                <div class="tip-item">T-Spin: 特殊配置で大ボーナス</div>
+                <div class="tip-item">Back-to-Back: 連続テトリスでx1.5</div>
+                <div class="tip-item">パーフェクトクリア: 全消しで特大ボーナス</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ゲームオーバー画面 -->
+    <div id="gameOverScreen" class="screen hidden">
+        <div class="gameover-container glass-panel">
+            <div class="gameover-title-container">
+                <h1 class="gameover-title">GAME OVER</h1>
+                <div class="gameover-glow"></div>
+            </div>
+            <div class="final-score-section">
+                <h2 class="final-score-label">最終スコア</h2>
+                <div id="finalScore" class="final-score-value premium-score">0</div>
+                <div id="newRecordBadge" class="new-record-badge hidden">NEW RECORD!</div>
+                <div id="danPromotion" class="dan-promotion hidden">
+                    <div class="promotion-text">段位昇格！</div>
+                    <div id="promotionDan" class="promotion-dan"></div>
+                </div>
+            </div>
+            <div class="game-stats-section">
+                <div class="stats-row">
+                    <span class="stat-label">レベル:</span>
+                    <span id="finalLevel" class="stat-value">1</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">ライン:</span>
+                    <span id="finalLines" class="stat-value">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">テトリス:</span>
+                    <span id="finalTetris" class="stat-value">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">T-Spin:</span>
+                    <span id="finalTSpin" class="stat-value">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stat-label">段位:</span>
+                    <span id="finalDan" class="stat-value dan-text">無段</span>
+                </div>
+            </div>
+            <div class="play-again-wrapper">
+                <button id="playAgainButton" class="play-again-button premium-button">
+                    <span class="button-text">PLAY AGAIN</span>
+                    <div class="button-shine"></div>
+                </button>
+                <button id="viewRankingButton" class="ranking-button">
+                    <span class="button-text">RANKING</span>
+                    <div class="button-shine"></div>
+                </button>
+                <button id="viewAchievementButton" class="achievement-button">
+                    <span class="button-text">ACHIEVEMENTS</span>
+                    <div class="button-shine"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- スコアポップアップ -->
+    <div id="scorePopup" class="score-popup hidden"></div>
+    
+    <!-- テクニカルボーナス表示 -->
+    <div id="technicalBonus" class="technical-bonus hidden"></div>
+    
+    <!-- ポイントボーナス表示 -->
+    <div id="pointBonus" class="point-bonus hidden"></div>
+
+    <!-- ランキング画面 -->
+    <div id="rankingScreen" class="screen hidden">
+        <div class="ranking-container glass-panel">
+            <div class="ranking-header">
+                <h1 class="ranking-title">HIGH SCORE RANKING</h1>
+                <button id="closeRankingButton" class="close-button">×</button>
+            </div>
+            <div class="ranking-content">
+                <div id="rankingList" class="ranking-list"></div>
+                <div class="ranking-stats">
+                    <h3 class="stats-title">統計情報</h3>
+                    <div id="overallStats" class="overall-stats"></div>
+                </div>
+            </div>
+            <div class="ranking-footer">
+                <button id="clearScoresButton" class="clear-scores-button">記録をクリア</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 実績画面 -->
+    <div id="achievementScreen" class="screen hidden">
+        <div class="achievement-container glass-panel">
+            <div class="achievement-header">
+                <h1 class="achievement-title">実績 - ACHIEVEMENTS</h1>
+                <button id="closeAchievementButton" class="close-button">×</button>
+            </div>
+            <div class="achievement-progress">
+                <div class="progress-stats">
+                    <div class="progress-item">
+                        <span class="progress-label">解除済み:</span>
+                        <span id="achievementProgress" class="progress-value">0/15</span>
+                    </div>
+                    <div class="progress-item">
+                        <span class="progress-label">達成率:</span>
+                        <span id="achievementPercentage" class="progress-value">0%</span>
+                    </div>
+                    <div class="progress-item">
+                        <span class="progress-label">獲得ポイント:</span>
+                        <span id="achievementPoints" class="progress-value">0P</span>
+                    </div>
+                </div>
+                <div class="achievement-progress-bar">
+                    <div id="achievementProgressFill" class="achievement-progress-fill"></div>
+                </div>
+            </div>
+            <div class="achievement-content">
+                <div class="achievement-categories">
+                    <button class="category-tab active" data-category="all">すべて</button>
+                    <button class="category-tab" data-category="basic">基本</button>
+                    <button class="category-tab" data-category="score">スコア</button>
+                    <button class="category-tab" data-category="technical">テクニカル</button>
+                    <button class="category-tab" data-category="special">特殊</button>
+                    <button class="category-tab" data-category="challenge">チャレンジ</button>
+                </div>
+                <div id="achievementList" class="achievement-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript読み込み -->
+    <script src="js/tetrominos.js"></script>
+    <script src="js/gameField.js"></script>
+    <script src="js/pointSystem.js"></script>
+    <script src="js/feverMode.js"></script>
+    <script src="js/scoreManager.js"></script>
+    <script src="js/achievementSystem.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
