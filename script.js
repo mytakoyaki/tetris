@@ -538,6 +538,12 @@ let game;
 
 document.addEventListener('DOMContentLoaded', () => {
     game = new TetrisGame();
+    
+    // レスポンシブマネージャー初期化
+    const responsiveManager = new ResponsiveManager();
+    
+    // 縦横切り替え機能初期化
+    const orientationToggle = new OrientationToggle();
 });
 
 window.addEventListener('beforeunload', () => {
@@ -545,3 +551,190 @@ window.addEventListener('beforeunload', () => {
         return 'ゲームが進行中です。本当にページを離れますか？';
     }
 });
+
+// レスポンシブ表示制御
+class ResponsiveManager {
+    constructor() {
+        this.breakpoints = {
+            xs: 480,
+            sm: 600, 
+            md: 768,
+            lg: 1200,
+            xl: 1400
+        };
+        this.controlsToggle = null;
+        this.init();
+    }
+    
+    init() {
+        this.setViewportHeight();
+        window.addEventListener('resize', () => {
+            this.setViewportHeight();
+            this.handleResize();
+        });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(() => {
+                this.setViewportHeight();
+                this.handleResize();
+            }, 100);
+        });
+        // 初期化時にも適用
+        setTimeout(() => this.handleResize(), 100);
+    }
+    
+    setViewportHeight() {
+        // リアルなビューポート高さを計算（モバイルブラウザのUI要素を考慮）
+        const vh = window.innerHeight * 0.01;
+        document.documentElement.style.setProperty('--vh', `${vh}px`);
+    }
+    
+    handleResize() {
+        const width = window.innerWidth;
+        const size = this.getCurrentBreakpoint(width);
+        this.applyResponsiveLayout(size);
+    }
+    
+    getCurrentBreakpoint(width) {
+        if (width <= this.breakpoints.xs) return 'xs';
+        if (width <= this.breakpoints.sm) return 'sm';
+        if (width <= this.breakpoints.md) return 'md';
+        if (width <= this.breakpoints.lg) return 'lg';
+        return 'xl';
+    }
+    
+    applyResponsiveLayout(size) {
+        const body = document.body;
+        body.className = body.className.replace(/size-\w+/g, '');
+        body.classList.add(`size-${size}`);
+        
+        // 極小画面での操作説明制御
+        if (size === 'xs') {
+            this.setupControlsToggle();
+        } else {
+            this.removeControlsToggle();
+        }
+        
+        // 情報パネルのコンパクト表示制御
+        this.applyCompactLayout(size);
+    }
+    
+    applyCompactLayout(size) {
+        const infoSections = document.querySelectorAll('.info-section');
+        const statItems = document.querySelectorAll('.stat-item');
+        
+        if (size === 'xs' || size === 'sm') {
+            // 小画面ではコンパクト表示
+            infoSections.forEach(section => {
+                section.classList.add('compact');
+            });
+            statItems.forEach(item => {
+                item.classList.add('compact');
+            });
+        } else {
+            // 大画面では通常表示
+            infoSections.forEach(section => {
+                section.classList.remove('compact');
+            });
+            statItems.forEach(item => {
+                item.classList.remove('compact');
+            });
+        }
+    }
+    
+    setupControlsToggle() {
+        if (this.controlsToggle) return; // 既に存在する場合はスキップ
+        
+        this.controlsToggle = document.createElement('button');
+        this.controlsToggle.className = 'controls-toggle';
+        this.controlsToggle.innerHTML = '?';
+        this.controlsToggle.title = '操作説明を表示';
+        this.controlsToggle.addEventListener('click', () => this.toggleControls());
+        document.body.appendChild(this.controlsToggle);
+        
+        // 初期状態では操作説明を非表示
+        const controls = document.querySelector('.controls-info');
+        if (controls) {
+            controls.classList.remove('show');
+        }
+    }
+    
+    removeControlsToggle() {
+        if (this.controlsToggle) {
+            this.controlsToggle.remove();
+            this.controlsToggle = null;
+        }
+        
+        // 操作説明を通常表示に戻す
+        const controls = document.querySelector('.controls-info');
+        if (controls) {
+            controls.classList.remove('show');
+            controls.style.transform = '';
+            controls.style.position = '';
+            controls.style.bottom = '';
+            controls.style.left = '';
+            controls.style.right = '';
+        }
+    }
+    
+    toggleControls() {
+        const controls = document.querySelector('.controls-info');
+        if (controls) {
+            controls.classList.toggle('show');
+            
+            // ボタンのアイコンを変更
+            if (controls.classList.contains('show')) {
+                this.controlsToggle.innerHTML = '×';
+                this.controlsToggle.title = '操作説明を閉じる';
+            } else {
+                this.controlsToggle.innerHTML = '?';
+                this.controlsToggle.title = '操作説明を表示';
+            }
+        }
+    }
+}
+
+// 縦横レイアウト切り替え
+class OrientationToggle {
+    constructor() {
+        this.isPortrait = false;
+        this.button = document.getElementById('orientationToggle');
+        this.init();
+    }
+    
+    init() {
+        this.button.addEventListener('click', () => this.toggle());
+        this.updateButtonText();
+    }
+    
+    toggle() {
+        this.isPortrait = !this.isPortrait;
+        const body = document.body;
+        
+        if (this.isPortrait) {
+            body.classList.add('layout-portrait');
+        } else {
+            body.classList.remove('layout-portrait');
+        }
+        
+        this.updateButtonText();
+        
+        // アニメーション効果
+        this.button.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+            this.button.style.transform = '';
+        }, 150);
+    }
+    
+    updateButtonText() {
+        const textElement = this.button.querySelector('.toggle-text');
+        const iconElement = this.button.querySelector('.toggle-icon');
+        
+        if (this.isPortrait) {
+            textElement.textContent = '横レイアウト';
+            iconElement.style.transform = 'rotate(90deg)';
+        } else {
+            textElement.textContent = '縦レイアウト';
+            iconElement.style.transform = 'rotate(0deg)';
+        }
+    }
+}

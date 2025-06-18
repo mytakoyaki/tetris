@@ -114,22 +114,27 @@ class FeverMode {
         const fieldBorderGlow = document.querySelector('.field-border-glow');
         
         if (gameFieldContainer) {
-            gameFieldContainer.style.background = 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 140, 0, 0.05))';
-            gameFieldContainer.style.animation = 'feverFieldPulse 2s ease-in-out infinite alternate';
+            gameFieldContainer.style.background = 'linear-gradient(135deg, rgba(255, 215, 0, 0.08), rgba(255, 140, 0, 0.04))';
+            gameFieldContainer.style.animation = 'feverFieldPulse 3s ease-in-out infinite alternate'; // 遅く
+            gameFieldContainer.style.willChange = 'transform, background'; // GPU加速
         }
         
         if (fieldBorderGlow) {
-            fieldBorderGlow.style.boxShadow = '0 0 40px #ffd700, inset 0 0 40px rgba(255, 215, 0, 0.2)';
-            fieldBorderGlow.style.animation = 'feverGlow 1.5s ease-in-out infinite alternate';
+            fieldBorderGlow.style.boxShadow = '0 0 30px #ffd700, inset 0 0 30px rgba(255, 215, 0, 0.15)';
+            fieldBorderGlow.style.animation = 'feverGlow 2s ease-in-out infinite alternate'; // 遅く
+            fieldBorderGlow.style.willChange = 'box-shadow, opacity'; // GPU加速
         }
 
         const body = document.body;
         if (body) {
+            body.classList.add('fever-active');
             body.style.background = 'radial-gradient(ellipse at center, rgba(45, 45, 45, 0.95) 0%, rgba(26, 26, 26, 1) 60%, rgba(15, 15, 15, 1) 100%)';
-            body.style.animation = 'feverBackgroundShift 6s ease-in-out infinite';
+            body.style.animation = 'feverBackgroundShift 8s ease-in-out infinite'; // 遅く
+            body.style.willChange = 'background'; // GPU加速
         }
 
-        this.addParticleEffect();
+        // パーティクル効果は少し遅らせて追加（初期ラグを軽減）
+        setTimeout(() => this.addParticleEffect(), 200);
         this.addFeverCSS();
     }
 
@@ -140,17 +145,21 @@ class FeverMode {
         if (gameFieldContainer) {
             gameFieldContainer.style.background = 'var(--glass-bg)';
             gameFieldContainer.style.animation = '';
+            gameFieldContainer.style.willChange = ''; // クリーンアップ
         }
         
         if (fieldBorderGlow) {
             fieldBorderGlow.style.boxShadow = '0 0 30px var(--accent-green), inset 0 0 30px rgba(0, 255, 136, 0.1)';
             fieldBorderGlow.style.animation = '';
+            fieldBorderGlow.style.willChange = ''; // クリーンアップ
         }
 
         const body = document.body;
         if (body) {
+            body.classList.remove('fever-active');
             body.style.background = 'radial-gradient(ellipse at center, var(--secondary-dark) 0%, var(--primary-dark) 100%)';
             body.style.animation = '';
+            body.style.willChange = ''; // クリーンアップ
         }
 
         this.removeParticleEffect();
@@ -180,8 +189,8 @@ class FeverMode {
                         transform: scale(1);
                     }
                     100% { 
-                        background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 140, 0, 0.08));
-                        transform: scale(1.01);
+                        background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(255, 140, 0, 0.06));
+                        transform: scale(1.005);
                     }
                 }
                 
@@ -204,17 +213,17 @@ class FeverMode {
                 
                 @keyframes feverParticleDrift {
                     0% { 
-                        transform: translateY(100vh) translateX(-50px) rotate(0deg);
+                        transform: translate3d(-25px, 100vh, 0) rotate(0deg);
                         opacity: 0;
                     }
                     10% {
-                        opacity: 1;
+                        opacity: 0.8;
                     }
                     90% {
-                        opacity: 1;
+                        opacity: 0.8;
                     }
                     100% { 
-                        transform: translateY(-100px) translateX(50px) rotate(360deg);
+                        transform: translate3d(25px, -50px, 0) rotate(180deg);
                         opacity: 0;
                     }
                 }
@@ -308,12 +317,14 @@ class FeverMode {
         const particleContainer = document.createElement('div');
         particleContainer.className = 'fever-particles';
         
-        for (let i = 0; i < 20; i++) {
+        // パーティクル数を20から8に削減（パフォーマンス向上）
+        for (let i = 0; i < 8; i++) {
             const particle = document.createElement('div');
             particle.className = 'fever-particle';
             particle.style.left = Math.random() * 100 + '%';
-            particle.style.animationDelay = Math.random() * 8 + 's';
-            particle.style.animationDuration = (6 + Math.random() * 4) + 's';
+            particle.style.animationDelay = Math.random() * 6 + 's';
+            particle.style.animationDuration = (4 + Math.random() * 2) + 's'; // 短縮
+            particle.style.willChange = 'transform, opacity'; // GPU加速
             particleContainer.appendChild(particle);
         }
         
