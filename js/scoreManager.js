@@ -13,7 +13,11 @@ const DAN_RANKS = [
     { name: '十段', minScore: 90000, color: '#FF4500' },
     { name: '名人', minScore: 130000, color: '#DC143C' },
     { name: '竜王', minScore: 200000, color: '#B8860B' },
-    { name: '永世名人', minScore: 300000, color: '#FFD700' }
+    { name: '永世名人', minScore: 300000, color: '#FFD700' },
+    // 隠し段位
+    { name: '天帝', minScore: 500000, color: '#FF1493', hidden: true },
+    { name: '神威', minScore: 1000000, color: '#FF4500', hidden: true },
+    { name: '創世', minScore: 2000000, color: '#FFD700', hidden: true }
 ];
 
 // 段位達成ボーナス設定
@@ -30,7 +34,11 @@ const DAN_BONUS = {
     '十段': { points: 100, effect: 'judan_effect' },
     '名人': { points: 150, effect: 'meijin_effect' },
     '竜王': { points: 200, effect: 'ryuou_effect' },
-    '永世名人': { points: 300, effect: 'eisei_effect' }
+    '永世名人': { points: 300, effect: 'eisei_effect' },
+    // 隠し段位ボーナス
+    '天帝': { points: 500, effect: 'tentei_effect' },
+    '神威': { points: 1000, effect: 'shin_i_effect' },
+    '創世': { points: 2000, effect: 'sousei_effect' }
 };
 
 class ScoreManager {
@@ -112,6 +120,21 @@ class ScoreManager {
         return this.getDanRank(score);
     }
 
+    // 表示用段位取得（隠し段位は条件付きで表示）
+    getDisplayDan(score) {
+        const currentDan = this.getDanRank(score);
+        
+        // 隠し段位の場合、条件を満たしていない場合は前の段位を表示
+        if (currentDan.hidden) {
+            const currentIndex = DAN_RANKS.findIndex(dan => dan.name === currentDan.name);
+            if (currentIndex > 0) {
+                return DAN_RANKS[currentIndex - 1];
+            }
+        }
+        
+        return currentDan;
+    }
+
     // 段位昇格チェックとボーナス付与
     checkDanPromotion(currentScore, pointSystem) {
         const currentDan = this.getDanRank(currentScore);
@@ -139,11 +162,17 @@ class ScoreManager {
         // ゲームプレイを妨げない左上角の通知
         const promotionNotification = document.createElement('div');
         promotionNotification.className = 'dan-promotion-notification';
+        
+        // 隠し段位の場合は特別なエフェクト
+        const isHiddenDan = dan.hidden;
+        const icon = isHiddenDan ? '🌟' : '🏆';
+        const title = isHiddenDan ? '隠し段位発見！' : '段位昇格！';
+        
         promotionNotification.innerHTML = `
             <div class="dan-promotion-content">
-                <div class="dan-promotion-icon">🏆</div>
+                <div class="dan-promotion-icon">${icon}</div>
                 <div class="dan-promotion-info">
-                    <div class="dan-promotion-title">段位昇格！</div>
+                    <div class="dan-promotion-title">${title}</div>
                     <div class="dan-promotion-name" style="color: ${dan.color}">${dan.name}</div>
                     <div class="dan-promotion-bonus">+${bonus.points}P</div>
                 </div>
@@ -167,6 +196,11 @@ class ScoreManager {
             opacity: 0;
             animation: danPromotionSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
             max-width: 300px;
+            ${isHiddenDan ? `
+                background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 69, 0, 0.1));
+                border: 3px solid ${dan.color};
+                box-shadow: 0 8px 32px rgba(255, 215, 0, 0.4);
+            ` : ''}
         `;
         
         // スタイルを追加（未存在の場合）

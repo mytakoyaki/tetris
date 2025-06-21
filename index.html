@@ -40,7 +40,12 @@
             <div class="left-area">
                 <div class="info-section glass-panel">
                     <h3 class="section-title">HOLD</h3>
-                    <div id="holdDisplay" class="block-display premium-display"></div>
+                    <div class="hold-section">
+                        <div class="hold-displays">
+                            <div class="hold-display" id="holdDisplay0" data-label="ホールド1"></div>
+                            <div class="hold-display" id="holdDisplay1" data-label="ホールド2"></div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="info-section glass-panel">
@@ -110,7 +115,7 @@
                     <div id="nextDisplay" class="block-display premium-display"></div>
                     <div class="exchange-hint premium-hint">
                         <span class="hint-key">E</span>
-                        <span class="hint-text">交換 (-30P)</span>
+                        <span class="hint-text">交換 (-45P)</span>
                     </div>
                 </div>
                 
@@ -164,11 +169,19 @@
                 </div>
                 <div class="control-item">
                     <span class="control-key">C</span>
-                    <span class="control-desc">ホールド</span>
+                    <span class="control-desc">ホールド (スロット0) (-15P)</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">V</span>
+                    <span class="control-desc">ホールド (スロット1) (-15P)</span>
                 </div>
                 <div class="control-item">
                     <span class="control-key">E</span>
-                    <span class="control-desc">ブロック交換</span>
+                    <span class="control-desc">ブロック交換 (-45P)</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">L</span>
+                    <span class="control-desc">行削除 (-200P)</span>
                 </div>
             </div>
             <div class="advanced-tips">
@@ -297,6 +310,8 @@
                     <button class="category-tab" data-category="score">スコア</button>
                     <button class="category-tab" data-category="technical">テクニカル</button>
                     <button class="category-tab" data-category="special">特殊</button>
+                    <button class="category-tab" data-category="rank">段位</button>
+                    <button class="category-tab" data-category="progress">進歩</button>
                     <button class="category-tab" data-category="challenge">チャレンジ</button>
                 </div>
                 <div id="achievementList" class="achievement-list"></div>

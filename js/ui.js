@@ -5,7 +5,9 @@ class UIManager {
             scoreDisplay: document.getElementById('scoreDisplay'),
             pointsDisplay: document.getElementById('pointsDisplay'),
             nextDisplay: document.getElementById('nextDisplay'),
-            holdDisplay: document.getElementById('holdDisplay'),
+            holdDisplay0: document.getElementById('holdDisplay0'),
+            holdDisplay1: document.getElementById('holdDisplay1'),
+            holdDisplay2: document.getElementById('holdDisplay2'),
             feverGauge: document.getElementById('feverGauge'),
             feverCounter: document.getElementById('feverCounter'),
             finalScore: document.getElementById('finalScore'),
@@ -85,30 +87,49 @@ class UIManager {
 
         this.elements.nextDisplay.innerHTML = '';
 
-        const preview = this.createTetrominoPreview(tetromino);
+        const preview = this.createTetrominoPreview(tetromino, 'next');
         this.elements.nextDisplay.appendChild(preview);
     }
 
-    updateHoldDisplay(tetromino) {
-        if (!this.elements.holdDisplay) return;
+    updateHoldDisplay(holdSlots) {
+        // 2つのホールド枠を更新
+        for (let i = 0; i < 2; i++) {
+            const holdDisplay = this.elements[`holdDisplay${i}`];
+            if (!holdDisplay) {
+                continue;
+            }
 
-        this.elements.holdDisplay.innerHTML = '';
+            holdDisplay.innerHTML = '';
 
-        if (tetromino) {
-            const preview = this.createTetrominoPreview(tetromino);
-            this.elements.holdDisplay.appendChild(preview);
+            if (holdSlots && holdSlots[i]) {
+                const preview = this.createTetrominoPreview(holdSlots[i], 'hold');
+                holdDisplay.appendChild(preview);
+            }
         }
     }
 
-    createTetrominoPreview(tetromino) {
+    createTetrominoPreview(tetromino, type = 'next') {
         const container = document.createElement('div');
         container.className = 'tetromino-preview';
         container.style.position = 'relative';
-        container.style.width = '100px';
+        
+        // NEXTとホールドで異なるサイズを使用
+        if (type === 'hold') {
+            container.style.width = '80px';
+            container.style.height = '60px';
+        } else {
+            container.style.width = '140px';
         container.style.height = '100px';
+        }
+        
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.justifyContent = 'center';
 
         const rotation = tetromino.getCurrentRotation();
-        const blockSize = 20;
+        
+        // NEXTとホールドで異なるブロックサイズを使用
+        const blockSize = type === 'hold' ? 14 : 20;
 
         let minX = 4, minY = 4, maxX = -1, maxY = -1;
         
@@ -125,8 +146,10 @@ class UIManager {
 
         const width = maxX - minX + 1;
         const height = maxY - minY + 1;
-        const offsetX = (100 - width * blockSize) / 2;
-        const offsetY = (100 - height * blockSize) / 2;
+        const containerWidth = type === 'hold' ? 80 : 140;
+        const containerHeight = type === 'hold' ? 60 : 100;
+        const offsetX = (containerWidth - width * blockSize) / 2;
+        const offsetY = (containerHeight - height * blockSize) / 2;
 
         for (let y = 0; y < rotation.length; y++) {
             for (let x = 0; x < rotation[y].length; x++) {
@@ -137,11 +160,11 @@ class UIManager {
                         position: absolute;
                         left: ${offsetX + (x - minX) * blockSize}px;
                         top: ${offsetY + (y - minY) * blockSize}px;
-                        width: ${blockSize - 2}px;
-                        height: ${blockSize - 2}px;
+                        width: ${blockSize - 1}px;
+                        height: ${blockSize - 1}px;
                         border: 1px solid rgba(255, 255, 255, 0.4);
-                        border-radius: 3px;
-                        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 4px rgba(0, 0, 0, 0.3);
+                        border-radius: 2px;
+                        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.3);
                     `;
                     container.appendChild(block);
                 }
@@ -153,13 +176,106 @@ class UIManager {
 
     updateFeverGauge(progress) {
         if (this.elements.feverGauge) {
-            const percentage = Math.min(progress.percentage, 100);
-            this.elements.feverGauge.style.setProperty('--fever-progress', percentage + '%');
+            const oldPercentage = parseFloat(this.elements.feverGauge.style.getPropertyValue('--fever-progress') || '0');
+            const newPercentage = Math.min(progress.percentage, 100);
+            
+            this.elements.feverGauge.style.setProperty('--fever-progress', newPercentage + '%');
+            
+            // ゲージが増加した時にエフェクトを追加
+            if (newPercentage > oldPercentage) {
+                this.addFeverGaugeFillEffect(newPercentage - oldPercentage);
+            }
+            
+            // フィーバーゲージが80%以上になった時の特別なエフェクト
+            if (newPercentage >= 80 && oldPercentage < 80) {
+                this.addFeverGaugeCriticalEffect();
+            }
         }
 
         if (this.elements.feverCounter) {
             this.elements.feverCounter.textContent = `${progress.current}/${progress.needed}`;
+            
+            // カウンターが更新された時にアニメーションをリセット
+            this.elements.feverCounter.style.animation = 'none';
+            this.elements.feverCounter.offsetHeight; // リフロー
+            this.elements.feverCounter.style.animation = 'counterPulse 1s ease-in-out';
         }
+    }
+    
+    addFeverGaugeFillEffect(fillAmount) {
+        if (!this.elements.feverGauge) return;
+        
+        // 既存のエフェクトを削除
+        const existingEffect = this.elements.feverGauge.querySelector('.fever-gauge-fill-effect');
+        if (existingEffect) {
+            existingEffect.remove();
+        }
+        
+        // 新しいエフェクトを作成
+        const fillEffect = document.createElement('div');
+        fillEffect.className = 'fever-gauge-fill-effect';
+        fillEffect.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                rgba(255, 215, 0, 0.8) 0%, 
+                rgba(255, 255, 255, 0.9) 50%, 
+                rgba(255, 215, 0, 0.8) 100%);
+            border-radius: 12px;
+            width: 0%;
+            animation: fillEffect 0.8s ease-out;
+            pointer-events: none;
+            z-index: 1;
+        `;
+        
+        this.elements.feverGauge.appendChild(fillEffect);
+        
+        // アニメーション終了後にエフェクトを削除
+        setTimeout(() => {
+            if (fillEffect.parentNode) {
+                fillEffect.remove();
+            }
+        }, 800);
+    }
+    
+    addFeverGaugeCriticalEffect() {
+        if (!this.elements.feverGauge) return;
+        
+        // クリティカルエフェクトを追加
+        const criticalEffect = document.createElement('div');
+        criticalEffect.className = 'fever-gauge-critical-effect';
+        criticalEffect.style.cssText = `
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                rgba(255, 215, 0, 0.8) 0%, 
+                rgba(255, 140, 0, 0.6) 25%, 
+                rgba(255, 215, 0, 0.8) 50%, 
+                rgba(255, 140, 0, 0.6) 75%, 
+                rgba(255, 215, 0, 0.8) 100%);
+            border-radius: 14px;
+            animation: criticalGlow 1.5s ease-in-out infinite alternate;
+            pointer-events: none;
+            z-index: 0;
+        `;
+        
+        this.elements.feverGauge.appendChild(criticalEffect);
+        
+        // ゲージのアニメーション速度を上げる
+        this.elements.feverGauge.style.animation = 'gaugeGlow 1s ease-in-out infinite alternate';
+        
+        // エフェクトを一定時間後に削除（フィーバーが発動するまで）
+        setTimeout(() => {
+            if (criticalEffect.parentNode) {
+                criticalEffect.remove();
+            }
+            this.elements.feverGauge.style.animation = 'gaugeGlow 2s ease-in-out infinite alternate';
+        }, 10000); // 10秒後に削除
     }
     
     updateLevel(level) {
@@ -252,8 +368,16 @@ class UIManager {
         document.getElementById('finalTSpin').textContent = gameData.tspinCount;
         
         const danElement = document.getElementById('finalDan');
-        danElement.textContent = gameData.currentDan.name;
-        danElement.style.color = gameData.currentDan.color;
+        // 隠し段位の場合は特別な表示
+        if (gameData.currentDan.hidden) {
+            danElement.textContent = gameData.currentDan.name + ' 🌟';
+            danElement.style.color = gameData.currentDan.color;
+            danElement.style.textShadow = '0 0 10px ' + gameData.currentDan.color;
+        } else {
+            danElement.textContent = gameData.currentDan.name;
+            danElement.style.color = gameData.currentDan.color;
+            danElement.style.textShadow = 'none';
+        }
         
         // 新記録バッジ
         const newRecordBadge = document.getElementById('newRecordBadge');
@@ -267,8 +391,16 @@ class UIManager {
         const danPromotion = document.getElementById('danPromotion');
         const promotionDan = document.getElementById('promotionDan');
         if (gameData.hasPromoted) {
-            promotionDan.textContent = gameData.promotedDan.name;
-            promotionDan.style.color = gameData.promotedDan.color;
+            // 隠し段位の場合は特別な表示
+            if (gameData.promotedDan.hidden) {
+                promotionDan.textContent = gameData.promotedDan.name + ' 🌟';
+                promotionDan.style.color = gameData.promotedDan.color;
+                promotionDan.style.textShadow = '0 0 10px ' + gameData.promotedDan.color;
+            } else {
+                promotionDan.textContent = gameData.promotedDan.name;
+                promotionDan.style.color = gameData.promotedDan.color;
+                promotionDan.style.textShadow = 'none';
+            }
             danPromotion.classList.remove('hidden');
         } else {
             danPromotion.classList.add('hidden');
@@ -371,11 +503,17 @@ class UIManager {
             const achievementCard = document.createElement('div');
             achievementCard.className = `achievement-card ${achievement.unlocked ? 'unlocked' : 'locked'}`;
             
+            // 隠しアチーブメントの処理
+            const isHidden = achievement.hidden && !achievement.unlocked;
+            const displayName = isHidden ? '???' : achievement.name;
+            const displayDescription = isHidden ? '???' : achievement.description;
+            const displayIcon = isHidden ? '❓' : achievement.icon;
+            
             achievementCard.innerHTML = `
-                <div class="achievement-icon">${achievement.icon}</div>
+                <div class="achievement-icon">${displayIcon}</div>
                 <div class="achievement-info">
-                    <div class="achievement-name">${achievement.name}</div>
-                    <div class="achievement-description">${achievement.description}</div>
+                    <div class="achievement-name">${displayName}</div>
+                    <div class="achievement-description">${displayDescription}</div>
                     <div class="achievement-meta">
                         <span class="achievement-category">${this.getCategoryDisplayName(achievement.category)}</span>
                         <span class="achievement-points">${achievement.points}P</span>
@@ -383,6 +521,12 @@ class UIManager {
                 </div>
                 ${achievement.unlocked ? '<div class="achievement-check">✓</div>' : ''}
             `;
+            
+            // 隠しアチーブメントの特別なスタイル
+            if (isHidden) {
+                achievementCard.style.opacity = '0.3';
+                achievementCard.style.filter = 'blur(1px)';
+            }
             
             achievementList.appendChild(achievementCard);
         });
@@ -788,6 +932,12 @@ class UIManager {
                     border-color: var(--accent-green) !important;
                     color: var(--accent-green) !important;
                     box-shadow: 0 0 20px rgba(0, 255, 136, 0.3) !important;
+                }
+                .debug-message {
+                    border-color: #4ecdc4 !important;
+                    color: #4ecdc4 !important;
+                    box-shadow: 0 0 20px rgba(78, 205, 196, 0.3) !important;
+                    font-size: 1.2em !important;
                 }
             `;
             document.head.appendChild(style);

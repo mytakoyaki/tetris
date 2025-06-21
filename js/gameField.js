@@ -6,7 +6,8 @@ class GameField {
         this.field = this.createEmptyField();
         this.currentTetromino = null;
         this.nextTetromino = null;
-        this.holdTetromino = null;
+        this.holdSlots = [null, null]; // 2つのホールドスロット
+        this.usedHoldSlots = new Set(); // 使用済みホールド枠
         this.canHold = true;
         this.dropTimer = 0;
         this.dropInterval = 1000;
@@ -29,12 +30,15 @@ class GameField {
         this.currentTetromino = this.nextTetromino;
         this.nextTetromino = Tetromino.createRandom();
         this.canHold = true;
+        this.resetUsedHoldSlots(); // 使用済みホールドスロットをリセット
         this.isLocking = false;
         this.lockTimer = 0;
         this.softDropDistance = 0;
         this.hardDropDistance = 0;
 
+        // 標準的なテトリスのゲームオーバー判定：デフォルトスポーン位置での衝突チェック
         if (this.isColliding(this.currentTetromino)) {
+            // スポーン位置での衝突＝ゲームオーバー
             return false;
         }
 
@@ -153,27 +157,103 @@ class GameField {
         return dropDistance;
     }
 
-    holdTetromino() {
-        if (!this.currentTetromino || !this.canHold) return false;
+    holdTetrominoAction(pointSystem, slotIndex = 0) {
+        if (!this.currentTetromino) {
+            return false;
+        }
+        
+        if (!this.canHold) {
+            return false;
+        }
 
-        if (this.holdTetromino) {
-            const temp = this.holdTetromino;
-            this.holdTetromino = new Tetromino(this.currentTetromino.type);
+        // スロットインデックスの検証
+        if (slotIndex < 0 || slotIndex >= this.holdSlots.length) {
+            return false;
+        }
+
+        // ポイントシステムとの連携
+        if (pointSystem && !pointSystem.canHold()) {
+            return false;
+        }
+        
+        if (this.holdSlots[slotIndex]) {
+            // ホールドエリアに既にブロックがある場合
+            const temp = this.holdSlots[slotIndex];
+            this.holdSlots[slotIndex] = new Tetromino(this.currentTetromino.type);
             this.currentTetromino = temp;
+            
+            // ホールドしたブロックを適切な位置に配置
             this.currentTetromino.x = 3;
             this.currentTetromino.y = 0;
             this.currentTetromino.rotation = 0;
+            
+            // 衝突が発生した場合、適切な位置を探す
+            if (this.isColliding(this.currentTetromino)) {
+                let foundValidPosition = false;
+                
+                // 上から順番に適切な位置を探す
+                for (let y = 0; y < 3; y++) {
+                    for (let x = 3; x < 7; x++) {
+                        this.currentTetromino.x = x;
+                        this.currentTetromino.y = y;
+                        
+                        if (!this.isColliding(this.currentTetromino)) {
+                            foundValidPosition = true;
+                            break;
+                        }
+                    }
+                    if (foundValidPosition) break;
+                }
+                
+                // それでも見つからない場合、ゲームオーバー
+                if (!foundValidPosition) {
+                    return false;
+                }
+            }
         } else {
-            this.holdTetromino = new Tetromino(this.currentTetromino.type);
+            // ホールドエリアが空の場合
+            this.holdSlots[slotIndex] = new Tetromino(this.currentTetromino.type);
             this.currentTetromino = this.nextTetromino;
             this.nextTetromino = Tetromino.createRandom();
+        }
+
+        // ポイント消費
+        if (pointSystem) {
+            pointSystem.holdNext();
         }
 
         this.canHold = false;
         this.softDropDistance = 0;
         this.hardDropDistance = 0;
         this.resetLockTimer();
+        
         return true;
+    }
+
+    // 最初の空きスロットにホールド
+    holdToFirstAvailableSlot(pointSystem) {
+        for (let i = 0; i < this.holdSlots.length; i++) {
+            if (!this.holdSlots[i]) {
+                return this.holdTetrominoAction(pointSystem, i);
+            }
+        }
+        // すべてのスロットが埋まっている場合、最初のスロットと交換
+        return this.holdTetrominoAction(pointSystem, 0);
+    }
+
+    // 特定のスロットにホールド
+    holdToSpecificSlot(pointSystem, slotIndex) {
+        return this.holdTetrominoAction(pointSystem, slotIndex);
+    }
+
+    // ホールドスロットの状態を取得
+    getHoldSlots() {
+        return this.holdSlots;
+    }
+
+    // 使用済みスロットをリセット
+    resetUsedHoldSlots() {
+        this.usedHoldSlots.clear();
     }
 
     lockTetromino() {
@@ -230,20 +310,43 @@ class GameField {
     }
 
     clearLines() {
-        const linesToClear = [];
+        let linesCleared = 0;
         
-        for (let y = 0; y < FIELD_HEIGHT; y++) {
-            if (this.field[y].every(cell => cell !== null)) {
-                linesToClear.push(y);
+        for (let y = FIELD_HEIGHT - 1; y >= 0; y--) {
+            if (this.isLineFull(y)) {
+                this.removeLine(y);
+                linesCleared++;
             }
         }
+        
+        return linesCleared;
+    }
 
-        for (const line of linesToClear) {
-            this.field.splice(line, 1);
-            this.field.unshift(Array(FIELD_WIDTH).fill(null));
+    clearSpecificLine(targetY) {
+        if (targetY < 0 || targetY >= FIELD_HEIGHT) {
+            return false;
         }
+        
+        // 指定された行を削除
+        this.removeLine(targetY);
+        return true;
+    }
 
-        return linesToClear.length;
+    isLineFull(y) {
+        for (let x = 0; x < FIELD_WIDTH; x++) {
+            if (this.field[y][x] === null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    removeLine(y) {
+        // 指定された行を削除して上から下にシフト
+        for (let row = y; row > 0; row--) {
+            this.field[row] = [...this.field[row - 1]];
+        }
+        this.field[0] = new Array(FIELD_WIDTH).fill(null);
     }
 
     resetLockTimer() {
@@ -307,7 +410,8 @@ class GameField {
         this.field = this.createEmptyField();
         this.currentTetromino = null;
         this.nextTetromino = null;
-        this.holdTetromino = null;
+        this.holdSlots = [null, null]; // 2つのホールドスロット
+        this.usedHoldSlots = new Set(); // 使用済みホールド枠
         this.canHold = true;
         this.dropTimer = 0;
         this.lockTimer = 0;

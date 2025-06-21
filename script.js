@@ -10,12 +10,16 @@ class TetrisGame {
         this.gameState = 'start';
         this.isRunning = false;
         this.lastTime = 0;
-        this.gameStartTime = 0;
+        this.gameStartTime = null;
         
         this.keys = {};
         this.keyRepeatTimers = {};
-        this.keyRepeatDelay = 150;
+        this.keyRepeatDelay = 200;
         this.keyRepeatInterval = 50;
+        
+        // レベルゲージ更新用のタイマー
+        this.levelGaugeUpdateTimer = 0;
+        this.levelGaugeUpdateInterval = 100; // 100ms間隔で更新
         
         this.init();
     }
@@ -178,6 +182,16 @@ class TetrisGame {
             playTime: playTime
         };
 
+        // フィーバー中のゲームオーバー判定
+        this.achievementSystem.setGameOverDuringFever(this.feverMode.getIsActive());
+        
+        // 実績システムにゲームオーバー統計を更新
+        this.achievementSystem.updateGameOverStats(
+            this.pointSystem.score,
+            this.pointSystem.totalLines,
+            playTime
+        );
+
         // 現在の段位取得
         const currentDan = this.scoreManager.getCurrentDan(this.pointSystem.score);
         
@@ -234,6 +248,14 @@ class TetrisGame {
         // 時間ベースレベルアップシステム
         this.updateLevelByTime();
 
+        // レベルゲージを一定間隔でリアルタイム更新
+        this.levelGaugeUpdateTimer += deltaTime;
+        if (this.levelGaugeUpdateTimer >= this.levelGaugeUpdateInterval) {
+            const levelProgress = this.pointSystem.getLevelProgress(this.gameStartTime);
+            this.ui.updateLevelProgress(levelProgress);
+            this.levelGaugeUpdateTimer = 0;
+        }
+
         const lockResult = this.gameField.update(deltaTime);
         
         if (lockResult) {
@@ -256,16 +278,13 @@ class TetrisGame {
 
     updateUI() {
         this.ui.updateNextDisplay(this.gameField.nextTetromino);
-        this.ui.updateHoldDisplay(this.gameField.holdTetromino);
+        this.ui.updateHoldDisplay(this.gameField.getHoldSlots());
         this.ui.updateScore(this.pointSystem.score);
         this.ui.updatePoints(this.pointSystem.points);
         this.ui.updateLevel(this.pointSystem.level);
         
         const progress = this.pointSystem.getFeverProgress();
         this.ui.updateFeverGauge(progress);
-        
-        const levelProgress = this.pointSystem.getLevelProgress(this.gameStartTime);
-        this.ui.updateLevelProgress(levelProgress);
         
         this.ui.updateStats({
             totalLines: this.pointSystem.totalLines,
@@ -292,12 +311,21 @@ class TetrisGame {
         // Add points for placing tetromino with drop bonuses
         this.pointSystem.onTetrominoPlaced(softDropDistance, hardDropDistance, isHardDrop);
 
+        // ブロック配置の実績更新
+        this.achievementSystem.updateStats('blocks_placed', blocksPlaced);
+
         if (linesCleared > 0) {
             const score = this.pointSystem.onLinesCleared(linesCleared, 'normal', isTSpin, isAllClear);
             this.ui.addScreenShake(8, 200);
             
             // 実績更新
             this.achievementSystem.updateStats('lines_cleared', linesCleared);
+            
+            // フィーバー中のライン消去追跡
+            if (this.feverMode.getIsActive()) {
+                this.achievementSystem.updateStats('fever_lines', linesCleared);
+            }
+            
             if (linesCleared === 4) {
                 this.achievementSystem.updateStats('tetris', 1);
             }
@@ -326,6 +354,13 @@ class TetrisGame {
         this.achievementSystem.updateStats('level', this.pointSystem.level);
         const currentDan = this.scoreManager.getCurrentDan(this.pointSystem.score);
         this.achievementSystem.updateStats('dan', currentDan.name);
+
+        // 新しいテトロミノをスポーン
+        if (!this.gameField.spawnTetromino()) {
+            // ゲームオーバー
+            this.gameOver();
+            return;
+        }
 
         this.updateUI();
     }
@@ -378,6 +413,20 @@ class TetrisGame {
     processKeyAction(key) {
         let moved = false;
 
+        // 秘密パターン追跡
+        let action = '';
+        switch (key) {
+            case 'ArrowUp': action = 'U'; break;
+            case 'ArrowDown': action = 'D'; break;
+            case 'ArrowLeft': action = 'L'; break;
+            case 'ArrowRight': action = 'R'; break;
+            case 'Space': action = 'A'; break;
+            case 'KeyC': action = 'B'; break;
+        }
+        if (action) {
+            this.achievementSystem.checkSecretPattern(action);
+        }
+
         switch (key) {
             case 'ArrowLeft':
                 moved = this.gameField.moveTetrominoLeft();
@@ -406,14 +455,45 @@ class TetrisGame {
                 break;
                 
             case 'KeyC':
-                moved = this.gameField.holdTetromino();
+                try {
+                    moved = this.gameField.holdToSpecificSlot(this.pointSystem, 0);
                 if (moved) {
+                    this.achievementSystem.updateStats('hold', 1);
                     this.updateUI();
+                        this.ui.showMessage('ホールド成功!', 1000, 'exchange-message');
+                    } else {
+                        if (!this.pointSystem.canHold()) {
+                            this.ui.showMessage('ポイント不足!', 1000, 'error-message');
+                        }
+                    }
+                } catch (error) {
+                    this.ui.showMessage(`エラー発生: ${error.message}`, 2000, 'error-message');
                 }
                 break;
                 
             case 'KeyE':
                 this.handleExchangeNext();
+                break;
+                
+            case 'KeyV':
+                try {
+                    moved = this.gameField.holdToSpecificSlot(this.pointSystem, 1);
+                    if (moved) {
+                        this.achievementSystem.updateStats('hold', 1);
+                        this.updateUI();
+                        this.ui.showMessage('ホールド成功!', 1000, 'exchange-message');
+                    } else {
+                        if (!this.pointSystem.canHold()) {
+                            this.ui.showMessage('ポイント不足!', 1000, 'error-message');
+                        }
+                    }
+                } catch (error) {
+                    this.ui.showMessage(`エラー発生: ${error.message}`, 2000, 'error-message');
+                }
+                break;
+                
+            case 'KeyL':
+                this.handleClearLine();
                 break;
         }
 
@@ -437,15 +517,72 @@ class TetrisGame {
         }
 
         if (canExchange) {
+            // フィーバーモード時はポイント消費なしでexchangeCountを更新
+            if (this.feverMode.getIsActive()) {
+                this.pointSystem.exchangeCount++;
+                this.achievementSystem.updateStats('fever_exchange', 1);
+            }
+            
+            // 現在の位置を保存
+            const currentX = this.gameField.currentTetromino.x;
+            const currentY = this.gameField.currentTetromino.y;
+            const currentRotation = this.gameField.currentTetromino.rotation;
+            
             // 現在のブロックと異なるタイプを取得
             const currentType = this.gameField.currentTetromino.type;
             const newType = this.getRandomDifferentType(currentType);
             
-            this.gameField.currentTetromino = new Tetromino(newType, this.gameField.currentTetromino.x, this.gameField.currentTetromino.y);
+            // 新しいテトロミノを作成（現在の位置と回転を保持）
+            this.gameField.currentTetromino = new Tetromino(newType);
+            this.gameField.currentTetromino.x = currentX;
+            this.gameField.currentTetromino.y = currentY;
+            this.gameField.currentTetromino.rotation = currentRotation;
             
+            // nextTetrominoも更新して連続性を保証
+            if (!this.gameField.nextTetromino) {
+                this.gameField.nextTetromino = Tetromino.createRandom();
+            }
+            
+            // 衝突が発生した場合、上部から適切な位置を探す
             if (this.gameField.isColliding(this.gameField.currentTetromino)) {
+                let foundValidPosition = false;
+                
+                // 上部から順番に適切な位置を探す
+                for (let y = 0; y < 3; y++) {
+                    for (let x = 3; x < 7; x++) {
+                        this.gameField.currentTetromino.x = x;
+                        this.gameField.currentTetromino.y = y;
+                        
+                        if (!this.gameField.isColliding(this.gameField.currentTetromino)) {
+                            foundValidPosition = true;
+                            break;
+                        }
+                    }
+                    if (foundValidPosition) break;
+                }
+                
+                // それでも見つからない場合、デフォルト位置
+                if (!foundValidPosition) {
                 this.gameField.currentTetromino.x = 3;
                 this.gameField.currentTetromino.y = 0;
+                }
+            }
+            
+            // ブロック交換時にタイマーを完全リセット
+            this.gameField.resetLockTimer();
+            this.gameField.dropTimer = -this.gameField.dropInterval + 50; // 交換直後すぐ落下判定
+            this.gameField.isLocking = false;
+            this.gameField.lockTimer = 0;
+            
+            // フィーバーモード時は特に確実に落下判定を実行
+            if (this.feverMode.getIsActive()) {
+                this.gameField.dropTimer = -this.gameField.dropInterval + 10; // より即座に落下判定
+            }
+            
+            // 交換後のブロックが地面に接している場合、ロック状態にする
+            if (!this.gameField.canMove(this.gameField.currentTetromino, 0, 1)) {
+                this.gameField.isLocking = true;
+                this.gameField.lockTimer = 0;
             }
             
             // 交換実績更新
@@ -530,6 +667,43 @@ class TetrisGame {
             if (this.pointSystem.callbacks.onLevelChange) {
                 this.pointSystem.callbacks.onLevelChange(newLevel);
             }
+        }
+    }
+
+    handleHold() {
+        if (!this.gameField.currentTetromino) {
+            this.ui.showMessage('ホールドできるブロックがありません!', 1000, 'error-message');
+            return;
+        }
+
+        if (this.gameField.holdToFirstAvailableSlot(this.pointSystem)) {
+            this.render();
+            this.ui.showMessage('ブロックをホールド!', 1000, 'hold-message');
+        } else {
+            this.ui.showMessage('ポイント不足!', 1000, 'error-message');
+        }
+    }
+
+    handleClearLine() {
+        if (!this.pointSystem.canClearLine()) {
+            this.ui.showMessage('ポイント不足!', 1000, 'error-message');
+            return;
+        }
+
+        // 一番下の行（FIELD_HEIGHT - 1）を強制的に削除
+        const targetLine = FIELD_HEIGHT - 1;
+        
+        // ポイントを消費して行を削除
+        if (this.pointSystem.clearLine()) {
+            this.gameField.clearSpecificLine(targetLine);
+            this.render();
+            this.ui.addScreenShake(12, 300);
+            this.ui.showMessage('行削除!', 1000, 'clear-line-message');
+            
+            // 実績更新
+            this.achievementSystem.updateStats('line_clear_power', 1);
+        } else {
+            this.ui.showMessage('ポイント不足!', 1000, 'error-message');
         }
     }
 }
