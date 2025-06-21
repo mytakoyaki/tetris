@@ -1,21 +1,23 @@
 const POINT_VALUES = {
     TETROMINO_PLACED: 10,
     EXCHANGE_BASE_COST: 30,
+    HOLD_COST: 15,
+    LINE_CLEAR_COST: 200, // ブロック一列削除のコスト
     SOFT_DROP_BONUS: 0.5,
     HARD_DROP_BONUS: 1,
     TECHNICAL_BONUS: 50,
     LINE_CLEAR: {
         1: 100,
-        2: 300,
-        3: 500,
-        4: 800
+        2: 400,    // 300 → 400
+        3: 1000,   // 500 → 1000
+        4: 2000    // 800 → 2000
     }
 };
 
 const EXCHANGE_COST_SYSTEM = {
-    BASE_COST: 30,
-    COSTS: [30, 45, 65, 90, 120], // 1回目〜5回目以降のコスト
-    MAX_COST: 120
+    BASE_COST: 45,
+    COSTS: [45, 65, 90, 120, 160],
+    MAX_COST: 160
 };
 
 const FEVER_CONFIG = {
@@ -93,27 +95,29 @@ class PointSystem {
         const finalAmount = Math.floor(amount * this.scoreMultiplier * levelMultiplier);
         this.score += finalAmount;
         
+        const hasBonus = this.scoreMultiplier > 1 || levelMultiplier > 1;
+        
         if (this.callbacks.onScoreChange) {
-            this.callbacks.onScoreChange(this.score, finalAmount, this.scoreMultiplier > 1 || levelMultiplier > 1);
+            this.callbacks.onScoreChange(this.score, finalAmount, hasBonus);
         }
 
         if (showPopup && position) {
-            this.showScorePopup(finalAmount, position, this.scoreMultiplier > 1 || levelMultiplier > 1);
+            this.showScorePopup(finalAmount, position, hasBonus);
         }
     }
 
     getLevelMultiplier() {
-        // CLAUDE.mdの詳細なレベル別スコア倍率テーブル
+        // レベル別スコア倍率テーブル（2倍に調整）
         const scoreMultipliers = {
-            1: 1.0,   2: 1.05,  3: 1.1,   4: 1.15,  5: 1.2,
-            6: 1.25,  7: 1.3,   8: 1.35,  9: 1.4,   10: 1.5,
-            11: 1.6,  12: 1.7,  13: 1.8,  14: 1.9,  15: 2.0,
-            16: 2.1,  17: 2.2,  18: 2.3,  19: 2.4,  20: 2.5,
-            21: 2.6,  22: 2.7,  23: 2.8,  24: 2.9,  25: 3.0,
-            26: 3.1,  27: 3.2,  28: 3.3,  29: 3.4,  30: 3.5
+            1: 1.0,   2: 1.1,   3: 1.2,   4: 1.3,   5: 1.4,
+            6: 1.5,   7: 1.6,   8: 1.7,   9: 1.8,   10: 1.9,
+            11: 2.0,  12: 2.0,  13: 2.0,  14: 2.0,  15: 2.0,
+            16: 2.0,  17: 2.0,  18: 2.0,  19: 2.0,  20: 2.0,
+            21: 2.0,  22: 2.0,  23: 2.0,  24: 2.0,  25: 2.0,
+            26: 2.0,  27: 2.0,  28: 2.0,  29: 2.0,  30: 2.0
         };
         
-        return scoreMultipliers[this.level] || 3.5;
+        return scoreMultipliers[this.level] || 2.0;
     }
 
     showScorePopup(amount, position, isBonus = false) {
@@ -122,7 +126,13 @@ class PointSystem {
 
         let text = `+${amount}`;
         if (isBonus) {
-            text += ` (x${this.scoreMultiplier} BONUS!)`;
+            const levelMultiplier = this.getLevelMultiplier();
+            if (this.scoreMultiplier > 1) {
+                text += ` (FEVER x${this.scoreMultiplier})`;
+            }
+            if (levelMultiplier > 1) {
+                text += ` (LEVEL x${levelMultiplier.toFixed(1)})`;
+            }
         }
 
         popup.textContent = text;
@@ -202,9 +212,9 @@ class PointSystem {
         // T-Spin ボーナス
         if (isTSpin) {
             let tspinBonus = 0;
-            if (lineCount === 1) tspinBonus = 2000;      // T-Spin Single
-            else if (lineCount === 2) tspinBonus = 6000; // T-Spin Double
-            else if (lineCount === 3) tspinBonus = 12000; // T-Spin Triple
+            if (lineCount === 1) tspinBonus = 2000;      // T-Spin Single: 3000 → 2000
+            else if (lineCount === 2) tspinBonus = 5000; // T-Spin Double: 8000 → 5000
+            else if (lineCount === 3) tspinBonus = 10000; // T-Spin Triple: 15000 → 10000
             
             baseScore += tspinBonus;
             this.tspinCount++;
@@ -213,7 +223,7 @@ class PointSystem {
         
         // パーフェクトクリア
         if (isAllClear) {
-            const perfectClearBonus = 25000;
+            const perfectClearBonus = 30000; // 25000 → 30000
             baseScore += perfectClearBonus;
             bonusDetails.push({ type: 'Perfect Clear', amount: perfectClearBonus });
         }
@@ -244,11 +254,9 @@ class PointSystem {
             this.tetrisCount++;
         }
         
-        // T-Spin handling
+        // T-Spin handling（重複適用を削除）
         if (isTSpin) {
             this.tspinCount++;
-            baseScore *= 2;
-            bonusDetails.push({ type: 'T-Spin', multiplier: 2 });
             pointsGained += POINT_VALUES.TECHNICAL_BONUS;
             this.lastClearWasSpecial = true;
         } else if (lineCount === 4) {
@@ -269,15 +277,13 @@ class PointSystem {
         // Combo bonus
         this.comboCount++;
         if (this.comboCount > 1) {
-            const comboBonus = Math.min(this.comboCount * 0.1, 1.0);
+            const comboBonus = Math.min(this.comboCount * 0.2, 2.0);
             bonusMultiplier *= (1 + comboBonus);
             bonusDetails.push({ type: 'Combo', count: this.comboCount, multiplier: 1 + comboBonus });
         }
         
-        // All Clear bonus
+        // All Clear bonus（重複適用を削除）
         if (isAllClear) {
-            bonusMultiplier *= 3;
-            bonusDetails.push({ type: 'Perfect Clear', multiplier: 3 });
             pointsGained += POINT_VALUES.TECHNICAL_BONUS * 2;
         }
         
@@ -331,17 +337,47 @@ class PointSystem {
     }
 
     canExchangeNext() {
-        return this.canAfford(this.getCurrentExchangeCost());
+        return this.points >= this.getCurrentExchangeCost();
+    }
+
+    canHold() {
+        return this.points >= POINT_VALUES.HOLD_COST;
+    }
+
+    canClearLine() {
+        return this.points >= POINT_VALUES.LINE_CLEAR_COST;
     }
 
     exchangeNext() {
         const cost = this.getCurrentExchangeCost();
-        if (this.spendPoints(cost)) {
+        if (this.points >= cost) {
+            this.points -= cost;
             this.exchangeCount++;
-            
-            // コスト表示（累積表示用）
-            this.showExchangeCostDisplay(cost);
-            
+            if (this.callbacks.onPointsChange) {
+                this.callbacks.onPointsChange(this.points);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    holdNext() {
+        if (this.points >= POINT_VALUES.HOLD_COST) {
+            this.points -= POINT_VALUES.HOLD_COST;
+            if (this.callbacks.onPointsChange) {
+                this.callbacks.onPointsChange(this.points);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    clearLine() {
+        if (this.points >= POINT_VALUES.LINE_CLEAR_COST) {
+            this.points -= POINT_VALUES.LINE_CLEAR_COST;
+            if (this.callbacks.onPointsChange) {
+                this.callbacks.onPointsChange(this.points);
+            }
             return true;
         }
         return false;
