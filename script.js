@@ -235,13 +235,6 @@ class TetrisGame {
     }
 
     update(deltaTime) {
-        if (!this.gameField.currentTetromino) {
-            if (!this.gameField.spawnTetromino()) {
-                this.gameOver();
-                return;
-            }
-        }
-
         // コンボタイマー更新
         this.pointSystem.updateComboTimer();
 
@@ -259,8 +252,16 @@ class TetrisGame {
         const lockResult = this.gameField.update(deltaTime);
         
         if (lockResult) {
-            // For auto-lock, ensure we get the soft drop distance
-            this.handleTetrominoLocked(lockResult);
+            if (lockResult.needsSpawn) {
+                // 新しいブロックのスポーンが必要
+                if (!this.gameField.spawnTetromino()) {
+                    this.gameOver();
+                    return;
+                }
+            } else {
+                // ブロックがロックされた
+                this.handleTetrominoLocked(lockResult);
+            }
         }
 
         // 段位昇格チェック

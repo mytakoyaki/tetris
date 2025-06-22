@@ -378,7 +378,10 @@ class GameField {
     }
 
     update(deltaTime) {
-        if (!this.currentTetromino) return null;
+        if (!this.currentTetromino) {
+            // 新しいブロックのスポーンが必要な場合は特別な値を返す
+            return { needsSpawn: true };
+        }
 
         // 独立した落下タイマー処理（移動操作に影響されない）
         this.dropTimer += deltaTime;
