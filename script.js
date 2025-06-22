@@ -542,28 +542,34 @@ class TetrisGame {
                 this.gameField.nextTetromino = Tetromino.createRandom();
             }
             
-            // 衝突が発生した場合、上部から適切な位置を探す
+            // 衝突が発生した場合、現在位置やその周辺のみを探索し、置けなければ交換をキャンセル
             if (this.gameField.isColliding(this.gameField.currentTetromino)) {
                 let foundValidPosition = false;
                 
-                // 上部から順番に適切な位置を探す
-                for (let y = 0; y < 3; y++) {
-                    for (let x = 3; x < 7; x++) {
-                        this.gameField.currentTetromino.x = x;
-                        this.gameField.currentTetromino.y = y;
-                        
-                        if (!this.gameField.isColliding(this.gameField.currentTetromino)) {
-                            foundValidPosition = true;
-                            break;
-                        }
+                // 現在の位置の周辺のみ探索
+                const searchPositions = [
+                    { x: currentX, y: currentY },
+                    { x: currentX, y: currentY - 1 },
+                    { x: currentX - 1, y: currentY },
+                    { x: currentX + 1, y: currentY },
+                    { x: currentX, y: currentY + 1 },
+                    { x: currentX - 1, y: currentY - 1 },
+                    { x: currentX + 1, y: currentY - 1 }
+                ];
+                
+                for (const pos of searchPositions) {
+                    this.gameField.currentTetromino.x = pos.x;
+                    this.gameField.currentTetromino.y = pos.y;
+                    if (!this.gameField.isColliding(this.gameField.currentTetromino)) {
+                        foundValidPosition = true;
+                        break;
                     }
-                    if (foundValidPosition) break;
                 }
                 
-                // それでも見つからない場合、デフォルト位置
+                // どこにも置けなければ交換キャンセル
                 if (!foundValidPosition) {
-                this.gameField.currentTetromino.x = 3;
-                this.gameField.currentTetromino.y = 0;
+                    this.ui.showMessage('ブロックを交換できません!', 1000, 'error-message');
+                    return;
                 }
             }
             
