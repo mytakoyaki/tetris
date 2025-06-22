@@ -181,13 +181,7 @@ class PointSystem {
         
         this.addPoints(pointsEarned);
         
-        // Show point bonus if there were any bonuses (表示のみ、フィーバー中でも表示)
-        if (bonusDetails.length > 0) {
-            const displayText = this.scoreMultiplier > 1 ? 
-                `FEVER中 (ポイント停止)` : 
-                `+${pointsEarned}P`;
-            this.showPointBonus(displayText, bonusDetails);
-        }
+        // ポイント獲得表示を削除（邪魔なため）
 
         if (this.callbacks.onBlocksPlacedChange) {
             this.callbacks.onBlocksPlacedChange(this.blocksPlaced, this.totalBlocksPlaced);

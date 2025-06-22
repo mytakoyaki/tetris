@@ -9,11 +9,16 @@ class GameField {
         this.holdSlots = [null, null]; // 2つのホールドスロット
         this.usedHoldSlots = new Set(); // 使用済みホールド枠
         this.canHold = true;
+        
+        // 独立したタイマーシステム
         this.dropTimer = 0;
         this.dropInterval = 1000;
         this.lockDelay = 500;
         this.lockTimer = 0;
         this.isLocking = false;
+        this.lockResetCount = 0; // ロックリセット回数制限
+        this.maxLockResets = 15; // 最大リセット回数
+        
         this.softDropDistance = 0;
         this.hardDropDistance = 0;
     }
@@ -33,6 +38,7 @@ class GameField {
         this.resetUsedHoldSlots(); // 使用済みホールドスロットをリセット
         this.isLocking = false;
         this.lockTimer = 0;
+        this.lockResetCount = 0; // ロックリセット回数をリセット
         this.softDropDistance = 0;
         this.hardDropDistance = 0;
 
@@ -98,7 +104,10 @@ class GameField {
     moveTetrominoLeft() {
         if (this.currentTetromino && this.canMove(this.currentTetromino, -1, 0)) {
             this.currentTetromino.moveLeft();
-            this.resetLockTimer();
+            // 地面にいる場合のみロックタイマーをリセット
+            if (!this.canMove(this.currentTetromino, 0, 1)) {
+                this.resetLockTimer();
+            }
             return true;
         }
         return false;
@@ -107,7 +116,10 @@ class GameField {
     moveTetrominoRight() {
         if (this.currentTetromino && this.canMove(this.currentTetromino, 1, 0)) {
             this.currentTetromino.moveRight();
-            this.resetLockTimer();
+            // 地面にいる場合のみロックタイマーをリセット
+            if (!this.canMove(this.currentTetromino, 0, 1)) {
+                this.resetLockTimer();
+            }
             return true;
         }
         return false;
@@ -138,7 +150,10 @@ class GameField {
         const rotationResult = this.canRotate(this.currentTetromino);
         if (rotationResult.canRotate) {
             this.currentTetromino = rotationResult.tetromino;
-            this.resetLockTimer();
+            // 地面にいる場合のみロックタイマーをリセット
+            if (!this.canMove(this.currentTetromino, 0, 1)) {
+                this.resetLockTimer();
+            }
             return true;
         }
         return false;
@@ -350,20 +365,26 @@ class GameField {
     }
 
     resetLockTimer() {
-        this.isLocking = false;
-        this.lockTimer = 0;
+        // ロックリセット回数制限で無限延長を防ぐ
+        if (this.lockResetCount < this.maxLockResets) {
+            this.isLocking = false;
+            this.lockTimer = 0;
+            this.lockResetCount++;
+        }
+        // 制限に達した場合はロックタイマーをリセットしない
     }
 
     update(deltaTime) {
         if (!this.currentTetromino) return null;
 
+        // 独立した落下タイマー処理（移動操作に影響されない）
         this.dropTimer += deltaTime;
-
         if (this.dropTimer >= this.dropInterval) {
             this.dropTimer = 0;
             this.moveTetrominoDown(false); // false = not manual soft drop
         }
 
+        // 独立したロックタイマー処理
         if (this.isLocking) {
             this.lockTimer += deltaTime;
             if (this.lockTimer >= this.lockDelay) {

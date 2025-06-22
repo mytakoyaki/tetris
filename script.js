@@ -460,7 +460,6 @@ class TetrisGame {
                 if (moved) {
                     this.achievementSystem.updateStats('hold', 1);
                     this.updateUI();
-                        this.ui.showMessage('ホールド成功!', 1000, 'exchange-message');
                     } else {
                         if (!this.pointSystem.canHold()) {
                             this.ui.showMessage('ポイント不足!', 1000, 'error-message');
@@ -568,16 +567,11 @@ class TetrisGame {
                 }
             }
             
-            // ブロック交換時にタイマーを完全リセット
+            // 交換時はロックタイマーのみリセット、落下タイマーは保持
             this.gameField.resetLockTimer();
-            this.gameField.dropTimer = -this.gameField.dropInterval + 50; // 交換直後すぐ落下判定
+            // dropTimer は保持して連続した落下を維持
             this.gameField.isLocking = false;
             this.gameField.lockTimer = 0;
-            
-            // フィーバーモード時は特に確実に落下判定を実行
-            if (this.feverMode.getIsActive()) {
-                this.gameField.dropTimer = -this.gameField.dropInterval + 10; // より即座に落下判定
-            }
             
             // 交換後のブロックが地面に接している場合、ロック状態にする
             if (!this.gameField.canMove(this.gameField.currentTetromino, 0, 1)) {
@@ -589,7 +583,6 @@ class TetrisGame {
             this.achievementSystem.updateStats('exchange', 1);
             
             this.render();
-            this.ui.showMessage('ブロック交換!', 1000, 'exchange-message');
         } else {
             this.ui.showMessage('ポイント不足!', 1000, 'error-message');
         }
