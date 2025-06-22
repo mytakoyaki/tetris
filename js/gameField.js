@@ -80,12 +80,15 @@ class GameField {
             return { canRotate: true, tetromino: testTetromino };
         }
 
+        // 標準的なテトリスの壁キックパターン（上方向への移動は含まない）
         const wallKicks = [
-            { x: -1, y: 0 },
-            { x: 1, y: 0 },
-            { x: 0, y: -1 },
-            { x: -2, y: 0 },
-            { x: 2, y: 0 }
+            { x: -1, y: 0 },  // 左
+            { x: 1, y: 0 },   // 右
+            { x: -2, y: 0 },  // 左2マス
+            { x: 2, y: 0 },   // 右2マス
+            { x: -1, y: 1 },  // 左下
+            { x: 1, y: 1 },   // 右下
+            { x: 0, y: 1 }    // 下
         ];
 
         for (const kick of wallKicks) {

@@ -531,8 +531,10 @@ class TetrisGame {
             const currentType = this.gameField.currentTetromino.type;
             const newType = this.getRandomDifferentType(currentType);
             
-            // 新しいテトロミノを作成（現在の位置と回転を保持）
+            // 新しいテトロミノを作成（完全にクリーンな状態で初期化）
             this.gameField.currentTetromino = new Tetromino(newType);
+            
+            // 位置と回転を設定（新しいインスタンスなので完全にクリーン）
             this.gameField.currentTetromino.x = currentX;
             this.gameField.currentTetromino.y = currentY;
             this.gameField.currentTetromino.rotation = currentRotation;
@@ -573,17 +575,16 @@ class TetrisGame {
                 }
             }
             
-            // 交換時はロックタイマーのみリセット、落下タイマーは保持
-            this.gameField.resetLockTimer();
-            // dropTimer は保持して連続した落下を維持
-            this.gameField.isLocking = false;
-            this.gameField.lockTimer = 0;
-            
             // 交換後のブロックが地面に接している場合、ロック状態にする
             if (!this.gameField.canMove(this.gameField.currentTetromino, 0, 1)) {
                 this.gameField.isLocking = true;
                 this.gameField.lockTimer = 0;
             }
+            
+            // 交換後の当たり判定を確実にリセット
+            this.gameField.resetLockTimer();
+            this.gameField.isLocking = false;
+            this.gameField.lockTimer = 0;
             
             // 交換実績更新
             this.achievementSystem.updateStats('exchange', 1);
