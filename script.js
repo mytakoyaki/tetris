@@ -7,6 +7,13 @@ class TetrisGame {
         this.scoreManager = new ScoreManager();
         this.achievementSystem = new AchievementSystem();
         
+        // オンライン機能（非同期で初期化）
+        this.authManager = null;
+        this.onlineDataManager = null;
+        this.onlineScoreManager = null;
+        this.onlineUI = null;
+        this.isOnlineMode = false;
+        
         this.gameState = 'start';
         this.isRunning = false;
         this.lastTime = 0;
@@ -22,6 +29,7 @@ class TetrisGame {
         this.levelGaugeUpdateInterval = 100; // 100ms間隔で更新
         
         this.init();
+        this.initializeOnlineFeatures();
     }
 
     init() {
@@ -612,8 +620,25 @@ class TetrisGame {
     }
 
     showRanking() {
-        this.ui.updateRankingScreen(this.scoreManager);
-        this.ui.showScreen('rankingScreen');
+        // オンラインランキングが利用可能な場合は選択肢を提供
+        if (this.isOnlineMode && this.onlineUI) {
+            this.showRankingOptions();
+        } else {
+            this.ui.updateRankingScreen(this.scoreManager);
+            this.ui.showScreen('rankingScreen');
+        }
+    }
+
+    showRankingOptions() {
+        // ローカル/オンライン選択UI（簡易実装）
+        const choice = confirm('オンラインランキングを表示しますか？\n\nOK: オンラインランキング\nキャンセル: ローカルランキング');
+        
+        if (choice) {
+            this.onlineUI.showOnlineRanking();
+        } else {
+            this.ui.updateRankingScreen(this.scoreManager);
+            this.ui.showScreen('rankingScreen');
+        }
     }
 
     hideRanking() {
@@ -905,3 +930,97 @@ class OrientationToggle {
         }
     }
 }
+
+// TetrisGameクラスにオンライン機能初期化メソッドを追加
+TetrisGame.prototype.initializeOnlineFeatures = async function() {
+    try {
+        // 動的インポートでオンライン機能を読み込み
+        const [
+            { default: AuthManager },
+            { default: OnlineDataManager },
+            { default: OnlineScoreManager },
+            { default: OnlineUI }
+        ] = await Promise.all([
+            import('./js/authManager.js'),
+            import('./js/onlineDataManager.js'),
+            import('./js/onlineScoreManager.js'),
+            import('./js/onlineUI.js')
+        ]);
+
+        // Firebase設定の確認
+        const { isFirebaseConnected } = await import('./js/firebaseConfig.js');
+        
+        if (!isFirebaseConnected()) {
+            console.log('Firebase接続失敗 - オフラインモードで続行');
+            return;
+        }
+
+        // オンライン機能の初期化
+        this.authManager = new AuthManager();
+        this.onlineDataManager = new OnlineDataManager(this.authManager);
+        this.onlineScoreManager = new OnlineScoreManager(
+            this.scoreManager,
+            this.authManager,
+            this.onlineDataManager
+        );
+        this.onlineUI = new OnlineUI(
+            this.ui,
+            this.authManager,
+            this.onlineScoreManager
+        );
+
+        // グローバルアクセス用
+        window.onlineUI = this.onlineUI;
+
+        // 認証状態の初期化（匿名ログイン）
+        const authResult = await this.authManager.initialize();
+        
+        if (authResult.success) {
+            this.isOnlineMode = true;
+            console.log('オンライン機能初期化完了');
+            
+            // オンライン状態の更新
+            this.onlineUI.updateOnlineStatus(true, authResult.user);
+            
+            // スコア保存時にオンライン同期を追加
+            this.setupOnlineScoreSync();
+        }
+
+    } catch (error) {
+        console.error('オンライン機能初期化エラー:', error);
+        console.log('オフラインモードで続行');
+    }
+};
+
+// オンラインスコア同期の設定
+TetrisGame.prototype.setupOnlineScoreSync = function() {
+    // ゲーム終了時にオンラインスコア保存
+    const originalGameOver = this.gameOver.bind(this);
+    this.gameOver = async function() {
+        originalGameOver();
+        
+        // オンラインスコア保存
+        if (this.isOnlineMode && this.onlineScoreManager) {
+            try {
+                const gameData = {
+                    score: this.pointSystem.score,
+                    level: this.pointSystem.level,
+                    totalLines: this.pointSystem.totalLines,
+                    tetrisCount: this.pointSystem.tetrisCount,
+                    tspinCount: this.pointSystem.tspinCount
+                };
+                
+                await this.onlineScoreManager.saveScore(gameData);
+            } catch (error) {
+                console.error('オンラインスコア保存エラー:', error);
+            }
+        }
+    };
+    
+    // 実績解除時にオンライン保存
+    this.achievementSystem.setCallback('onAchievementUnlocked', (achievement) => {
+        if (this.isOnlineMode && this.onlineScoreManager) {
+            this.onlineScoreManager.saveAchievement(achievement.id);
+        }
+    });
+};
