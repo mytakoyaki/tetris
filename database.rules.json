@@ -1,0 +1,50 @@
+{
+  "rules": {
+    // ユーザーデータ
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    },
+    
+    // スコアデータ
+    "scores": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "$scoreId": {
+          ".validate": "newData.hasChildren(['score', 'level', 'totalLines', 'timestamp', 'uid']) && newData.child('uid').val() === auth.uid"
+        }
+      }
+    },
+    
+    // リーダーボード（全員が読み取り可能、自分のデータのみ書き込み可能）
+    "leaderboard": {
+      ".read": "auth != null",
+      "$uid": {
+        ".write": "$uid === auth.uid",
+        ".validate": "newData.hasChildren(['uid', 'displayName', 'highScore']) && newData.child('uid').val() === auth.uid"
+      }
+    },
+    
+    // 実績データ
+    "achievements": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "$achievementId": {
+          ".validate": "newData.hasChildren(['achievementId', 'progress', 'unlockedAt', 'uid']) && newData.child('uid').val() === auth.uid"
+        }
+      }
+    },
+    
+    // 統計データ
+    "stats": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    }
+  }
+}
